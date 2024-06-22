@@ -13,7 +13,7 @@
       <div>
         <!-- 文本提问 -->
         <div v-if="question.questionType === 'text'">
-          <div v-if="askButtonMode">
+          <div v-if="askButtonVisible && askButtonMode">
             <el-input v-model="userAnswer" :rows="3" type="textarea" placeholder="请输入问题" />
           </div>
           <div v-else>
@@ -56,11 +56,8 @@
 
           <!-- Phototalk回答 -->
           <div v-if="question.answerType === 'phototalk'">
-            <div class="phototalk-wrapper margin10">
-              <video
-                autoplay
-                src="https://storage.googleapis.com/yepic-generated-videos/4d001c40-9c71-4b2a-87c6-21a393b2d22f/downloads/avatar/dffaf892-1d78-f228-6c07-c148239fb54f/4d001c40-9c71-4b2a-87c6-21a393b2d22f.mp4"
-              ></video>
+            <div class="question-text margin10">
+              <p class="dialog-answer">Photo talk</p>
             </div>
           </div>
 
@@ -74,7 +71,7 @@
       </div>
       <div class="dialog-footer">
         <el-button v-if="!answerVisible" @click="submitAnswer(question)">查看正确答案</el-button>
-        <el-button v-else @click="closeDialog">关闭</el-button>
+        <el-button v-else @click="closeDialog">关闭答案</el-button>
       </div>
     </div>
 
@@ -184,7 +181,6 @@ export default {
       if (audioPlayer.value && !mediaSource.value) {
         console.log('Initializing MediaSource')
         mediaSource.value = new MediaSource()
-        console.log('mediaSource.value', mediaSource.value)
         audioPlayer.value.src = URL.createObjectURL(mediaSource.value)
         mediaSource.value.addEventListener('sourceopen', () => {
           if (!sourceBuffer.value) {
@@ -204,7 +200,7 @@ export default {
     }
 
     const closeDialog = () => {
-      dialogVisible.value = false
+      // dialogVisible.value = false
       answerVisible.value = false
     }
 
@@ -220,6 +216,7 @@ export default {
     }
 
     const startRecording = () => {
+      answerUrl.value = ''
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
         navigator.mediaDevices
           .getUserMedia({ audio: true })
@@ -262,31 +259,27 @@ export default {
 
     const handleAudioComplete = () => {
       console.log('Audio complete')
-      if (!mediaSource.value) {
-        initMediaSource()
-      }
-
-      if (mediaSource.value.readyState === 'open') {
-        const checkAndEndStream = () => {
-          console.log('Checking and ending stream')
-          if (!sourceBuffer.value.updating) {
-            try {
-              sourceBuffer.value.removeEventListener('updateend', checkAndEndStream)
-              sourceBuffer.value.abort()
-              mediaSource.value.endOfStream()
-            } catch (error) {
-              console.error('Error ending stream:', error)
-            }
-          }
-        }
-
+      if (mediaSource.value && mediaSource.value.readyState === 'open') {
         if (!sourceBuffer.value.updating) {
-          mediaSource.value.endOfStream()
-        } else {
-          if (!isUpdateEndListenerAdded) {
-            sourceBuffer.value.addEventListener('updateend', checkAndEndStream)
-            isUpdateEndListenerAdded = true
+          try {
+            sourceBuffer.value.removeEventListener('updateend', appendNextAudioPart)
+            mediaSource.value.endOfStream()
+            resetMediaSource()
+          } catch (error) {
+            console.error('Error ending stream:', error)
+            resetMediaSource()
           }
+        } else {
+          sourceBuffer.value.addEventListener('updateend', () => {
+            try {
+              sourceBuffer.value.removeEventListener('updateend', appendNextAudioPart)
+              mediaSource.value.endOfStream()
+              resetMediaSource()
+            } catch (error) {
+              console.error('Error ending stream on updateend:', error)
+              resetMediaSource()
+            }
+          })
         }
       }
     }
@@ -338,7 +331,7 @@ export default {
 }
 </script>
 
-<style lang="scss" scoped>
+<style scoped>
 .dialog-question {
   font-weight: bold;
 }
@@ -365,15 +358,5 @@ export default {
 
 .ask-button {
   margin-bottom: 20px;
-}
-
-.phototalk-wrapper {
-  width: 200px;
-  height: 200px;
-
-  video {
-    width: 100%;
-    height: 100%;
-  }
 }
 </style>

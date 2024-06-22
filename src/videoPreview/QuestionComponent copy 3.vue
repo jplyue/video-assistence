@@ -9,6 +9,7 @@
       @audioPartReady="handleAudioPartReady"
       @audioComplete="handleAudioComplete"
     />
+    222{{ interactionVisible }}
     <div v-if="interactionVisible && (!askButtonVisible || (askButtonVisible && askButtonMode))">
       <div>
         <!-- 文本提问 -->
@@ -49,6 +50,7 @@
 
           <!-- 语音回答 -->
           <div v-else-if="question.answerType === 'audio'">
+            333{{ answerVisible }}
             <div>
               <audio ref="audioPlayer" controls></audio>
             </div>
@@ -56,11 +58,8 @@
 
           <!-- Phototalk回答 -->
           <div v-if="question.answerType === 'phototalk'">
-            <div class="phototalk-wrapper margin10">
-              <video
-                autoplay
-                src="https://storage.googleapis.com/yepic-generated-videos/4d001c40-9c71-4b2a-87c6-21a393b2d22f/downloads/avatar/dffaf892-1d78-f228-6c07-c148239fb54f/4d001c40-9c71-4b2a-87c6-21a393b2d22f.mp4"
-              ></video>
+            <div class="question-text margin10">
+              <p class="dialog-answer">Photo talk</p>
             </div>
           </div>
 
@@ -171,20 +170,10 @@ export default {
       }
     )
 
-    const resetState = () => {
-      userAnswer.value = ''
-      displayedText.value = ''
-      isRecording.value = false
-      answerUrl.value = ''
-      answerVisible.value = false
-      askButtonMode.value = false
-    }
-
     const initMediaSource = () => {
       if (audioPlayer.value && !mediaSource.value) {
         console.log('Initializing MediaSource')
         mediaSource.value = new MediaSource()
-        console.log('mediaSource.value', mediaSource.value)
         audioPlayer.value.src = URL.createObjectURL(mediaSource.value)
         mediaSource.value.addEventListener('sourceopen', () => {
           if (!sourceBuffer.value) {
@@ -331,14 +320,13 @@ export default {
       closeDialog,
       submitAnswer,
       askButtonMode,
-      handleAskButtonClick,
-      resetState
+      handleAskButtonClick
     }
   }
 }
 </script>
 
-<style lang="scss" scoped>
+<style scoped>
 .dialog-question {
   font-weight: bold;
 }
@@ -365,15 +353,5 @@ export default {
 
 .ask-button {
   margin-bottom: 20px;
-}
-
-.phototalk-wrapper {
-  width: 200px;
-  height: 200px;
-
-  video {
-    width: 100%;
-    height: 100%;
-  }
 }
 </style>
