@@ -1,0 +1,395 @@
+<template>
+  <div id="video-setting" class="container">
+    <div class="video-player-wrapper">
+      <video ref="videoPlayer" class="video-js vjs-default-skin" controls></video>
+    </div>
+    <div class="time-display">
+      <span>{{ formatTime(currentTime) }}</span>
+      <el-tooltip content="复制时间戳">
+        <el-button type="primary" icon="el-icon-document-copy" size="mini" @click="copyTimestamp">
+          复制时间戳
+        </el-button>
+      </el-tooltip>
+    </div>
+    <el-slider v-model="currentTime" :max="duration" @change="seekVideo" show-tooltip>
+      <template #tooltip>
+        <div>{{ formatTime(currentTime) }}</div>
+      </template>
+    </el-slider>
+
+    <el-form class="form-area">
+      <!-- 交互区 -->
+      <el-form-item label="交互区">
+        <el-radio-group v-model="interactionPosition">
+          <el-radio label="top">上面</el-radio>
+          <el-radio label="right">右面</el-radio>
+          <el-radio label="bottom">下面</el-radio>
+        </el-radio-group>
+      </el-form-item>
+
+      <!-- 设置问题 -->
+      <el-form-item label="设置问题">
+        <el-table :data="questions" style="width: 100%">
+          <el-table-column label="删除" width="70">
+            <template #default="scope">
+              <el-button icon="Delete" @click="handleDelete(scope.$index, scope.row)" circle>
+                <delete style="width: 1em; height: 1em; margin-right: 8px" />
+              </el-button>
+            </template>
+          </el-table-column>
+          <el-table-column prop="index" label="#" width="50"></el-table-column>
+          <el-table-column label="问题" width="440">
+            <template #default="scope">
+              <el-form-item>
+                <el-input
+                  v-model="scope.row.question"
+                  :rows="3"
+                  type="textarea"
+                  placeholder="请输入问题"
+                />
+              </el-form-item>
+              <el-radio-group v-model="scope.row.questionType">
+                <el-radio label="text">文字</el-radio>
+                <el-radio label="audio">语音</el-radio>
+              </el-radio-group>
+            </template>
+          </el-table-column>
+          <el-table-column label="回答" width="440">
+            <template #default="scope">
+              <el-form-item>
+                <el-input
+                  v-model="scope.row.answer"
+                  :rows="3"
+                  type="textarea"
+                  placeholder="请输入回答"
+                />
+              </el-form-item>
+              <el-radio-group v-model="scope.row.answerType">
+                <el-radio label="text">文字</el-radio>
+                <el-radio label="audio">语音</el-radio>
+                <el-radio label="phototalk">照片对话</el-radio>
+                <el-radio label="knowledgeBase">知识库</el-radio>
+              </el-radio-group>
+            </template>
+          </el-table-column>
+          <el-table-column label="时间" width="150">
+            <template #default="scope">
+              <el-input v-model="scope.row.time" placeholder="时间" />
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="150">
+            <template #default="scope">
+              <div class="button-group">
+                <el-button size="mini" @click="showQuestionPopover(scope.$index)">
+                  用户提问机制
+                </el-button>
+                <el-popover
+                  v-model:visible="questionPopoverVisible[scope.$index]"
+                  placement="top"
+                  width="200"
+                  trigger="manual"
+                >
+                  <div class="dialog-content">
+                    <el-radio-group v-model="scope.row.action" size="mini">
+                      <el-radio-button label="pause">暂停视频</el-radio-button>
+                      <el-radio-button label="button">添加按钮</el-radio-button>
+                    </el-radio-group>
+                  </div>
+                  <template v-slot:reference>
+                    <span></span>
+                  </template>
+                </el-popover>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+        <div class="buttons" style="margin-top: 20px">
+          <el-button type="primary" @click="handleAdd">增加</el-button>
+          <el-button type="success" @click="handleSubmit">提交</el-button>
+        </div>
+      </el-form-item>
+
+      <!-- 设置分享 -->
+      <el-form-item label="设置分享">
+        <el-checkbox v-model="shareSetting">启用分享</el-checkbox>
+        <el-checkbox v-model="loginRequired">观看视频是否需要登录</el-checkbox>
+      </el-form-item>
+    </el-form>
+
+    <!-- 统计信息 -->
+    <div class="statistics">
+      <h3>统计信息</h3>
+      <p>总问题数: {{ questions.length }}</p>
+      <p>已回答问题数: {{ answeredQuestionsCount }}</p>
+      <!-- 其他统计信息 -->
+    </div>
+  </div>
+</template>
+
+<script>
+import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
+import 'video.js/dist/video-js.css'
+import { ElMessage } from 'element-plus'
+import { CopyDocument, Delete } from '@element-plus/icons-vue'
+
+export default {
+  components: {
+    CopyDocument,
+    Delete
+  },
+  setup() {
+    const player = ref(null)
+    const interactionPosition = ref('top')
+    const shareSetting = ref(false)
+    const loginRequired = ref(false)
+    const questions = ref(
+      Array.from({ length: 5 }, (_, index) => ({
+        index: index + 1,
+        question: '',
+        answer: '',
+        time: '',
+        questionType: 'text',
+        answerType: 'text',
+        action: 'pause' // 默认设置为暂停视频
+      }))
+    )
+    const currentTime = ref(0)
+    const duration = ref(0)
+    const questionPopoverVisible = reactive({})
+    const popoverAction = ref('pause')
+
+    const answeredQuestionsCount = computed(() => {
+      return questions.value.filter((question) => question.answer !== '').length
+    })
+
+    onMounted(async () => {
+      const videojs = await import('video.js')
+      player.value = videojs.default(document.querySelector('.video-js'), {
+        sources: [
+          {
+            src: './example.mp4',
+            type: 'video/mp4'
+          }
+        ]
+      })
+      player.value.on('timeupdate', updateCurrentTime)
+      player.value.on('loadedmetadata', () => {
+        duration.value = player.value.duration()
+      })
+    })
+
+    const updateCurrentTime = () => {
+      currentTime.value = player.value.currentTime()
+    }
+
+    const seekVideo = (value) => {
+      if (player.value) {
+        player.value.currentTime(value)
+      }
+    }
+
+    const formatTime = (seconds) => {
+      const minutes = Math.floor(seconds / 60)
+      const sec = Math.floor(seconds % 60)
+      return `${minutes}:${sec < 10 ? '0' : ''}${sec}`
+    }
+
+    const copyTimestamp = () => {
+      const timestamp = formatTime(currentTime.value)
+      navigator.clipboard.writeText(timestamp).then(() => {
+        ElMessage({
+          message: `复制时间戳: ${timestamp}`,
+          type: 'success'
+        })
+      })
+    }
+
+    const handleAdd = () => {
+      const newIndex = questions.value.length + 1
+      questions.value.push({
+        index: newIndex,
+        question: '',
+        answer: '',
+        time: new Date().toLocaleDateString(),
+        questionType: 'text',
+        answerType: 'text',
+        action: 'pause' // 默认设置为暂停视频
+      })
+    }
+
+    const handleEdit = (index, row) => {
+      console.log('编辑行:', index, row)
+    }
+
+    const handleDelete = (index, row) => {
+      questions.value.splice(index, 1)
+      // 更新索引
+      questions.value.forEach((question, idx) => {
+        question.index = idx + 1
+      })
+    }
+
+    const handleSubmit = () => {
+      const tableData = questions.value.map((question) => ({
+        index: question.index,
+        question: question.question,
+        answer: question.answer,
+        time: question.time,
+        questionType: question.questionType,
+        answerType: question.answerType,
+        action: question.action
+      }))
+      const formData = {
+        interactionPosition: interactionPosition.value,
+        shareSetting: shareSetting.value,
+        loginRequired: loginRequired.value,
+        questions: tableData
+      }
+      console.log('提交的数据:', formData)
+    }
+
+    const showQuestionPopover = (index) => {
+      questionPopoverVisible[index] = true
+    }
+
+    const pauseVideo = () => {
+      if (player.value) {
+        player.value.pause()
+      }
+    }
+
+    const addQuestion = () => {
+      const newIndex = questions.value.length + 1
+      questions.value.push({
+        index: newIndex,
+        question: '',
+        answer: '',
+        time: new Date().toLocaleDateString(),
+        questionType: 'text',
+        answerType: 'text',
+        action: 'pause'
+      })
+      questionPopoverVisible[newIndex - 1] = false
+    }
+
+    onBeforeUnmount(() => {
+      if (player.value) {
+        player.value.dispose()
+      }
+    })
+
+    return {
+      interactionPosition,
+      shareSetting,
+      loginRequired,
+      questions,
+      handleAdd,
+      handleEdit,
+      handleDelete,
+      handleSubmit,
+      currentTime,
+      duration,
+      seekVideo,
+      formatTime,
+      copyTimestamp,
+      questionPopoverVisible,
+      answeredQuestionsCount,
+      showQuestionPopover,
+      pauseVideo,
+      addQuestion,
+      popoverAction
+    }
+  }
+}
+</script>
+
+<style lang="scss">
+@import 'video.js/dist/video-js.css';
+
+#video-setting.container {
+  max-width: 90vw; /* 修改为 90% 的视窗宽度 */
+  margin: 50px auto;
+  padding: 20px;
+  background-color: white;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.video-player-wrapper {
+  margin-bottom: 20px;
+}
+
+.video-js {
+  width: 100%;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.time-display {
+  text-align: center;
+  margin-bottom: 20px;
+  font-size: 16px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+}
+
+.el-slider {
+  margin-bottom: 20px;
+}
+
+.form-area {
+  margin-bottom: 20px;
+}
+
+.buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 20px; /* 为提交按钮增加一些 margin */
+}
+
+.el-form-item {
+  margin-bottom: 20px;
+}
+
+.button-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.el-popover {
+  .el-popover__reference {
+    display: inline-block;
+  }
+}
+
+.el-table__body td.el-table__cell {
+  vertical-align: top;
+}
+
+.dialog-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+}
+
+.statistics {
+  margin-top: 20px;
+  padding: 10px;
+  border: 1px solid #ebeef5;
+  border-radius: 5px;
+  background-color: #f9f9f9;
+}
+
+.statistics h3 {
+  margin-bottom: 10px;
+}
+
+.statistics p {
+  margin: 0;
+}
+</style>
