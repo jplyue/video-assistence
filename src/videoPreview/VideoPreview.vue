@@ -20,13 +20,6 @@
         />
       </div>
     </div>
-    <!-- WebSocket Component for TTS -->
-    <WebSocketComponent
-      v-if="currentQuestion.answerType === 'audio'"
-      :text="currentQuestion.answer"
-      @audioReady="handleAudioReady"
-      @error="handleError"
-    />
   </div>
 </template>
 
@@ -35,12 +28,10 @@ import { ref, reactive, onMounted } from 'vue'
 import 'video.js/dist/video-js.css'
 import videojs from 'video.js'
 import QuestionComponent from './QuestionComponent.vue'
-import WebSocketComponent from './WebSocketComponent.vue'
 
 export default {
   components: {
-    QuestionComponent,
-    WebSocketComponent
+    QuestionComponent
   },
   setup() {
     const player = ref(null)
@@ -138,26 +129,6 @@ export default {
       ]
     })
 
-    const displayText = async (text) => {
-      currentQuestion.value.displayedText = ''
-      if (!text) return
-
-      breakDisplayTextFlag.value = false
-
-      for (let i = 0; i < text.length; i++) {
-        if (breakDisplayTextFlag.value) {
-          break
-        }
-        await new Promise((resolve) => setTimeout(resolve, 50))
-        currentQuestion.value.displayedText += text[i]
-      }
-    }
-
-    // 用于打断输出的方法
-    const interruptDisplayText = () => {
-      breakDisplayTextFlag.value = true
-    }
-
     const checkNextQuestion = () => {
       setTimeout(() => {
         if (!player.value.paused() && currentQuestionIndex.value < videoData.questions.length) {
@@ -211,14 +182,6 @@ export default {
     const hideQuestion = () => {
       console.log('hide question')
       interactionVisible.value = false
-    }
-
-    const handleAudioReady = (url) => {
-      console.log('Audio ready:', url)
-    }
-
-    const handleError = (error) => {
-      console.error('WebSocket error:', error)
     }
 
     const setInteractionPosition = (position) => {
