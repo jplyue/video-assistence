@@ -160,15 +160,23 @@ export default {
     const audioParts = ref([])
     let isUpdateEndListenerAdded = false
 
-    watch(
-      () => props.interactionVisible,
-      (newVal, oldVal) => {
-        console.log('hide answer')
-        if (newVal === false && oldVal) {
-          answerVisible.value = false
+    // watch(
+    //   () => props.interactionVisible,
+    //   (newVal, oldVal) => {
+    //     console.log('hide answer')
+    //     if (newVal === false && oldVal) {
+    //       answerVisible.value = false
+    //     }
+    //   }
+    // )
+
+    watch(props.question, (newQuestion) => {
+      if (newQuestion && newQuestion.answerType === 'audio') {
+        if (questionComponent.value) {
+          wsComponent.value.resetWebSocket()
         }
       }
-    )
+    })
 
     const resetState = () => {
       userAnswer.value = ''
@@ -206,6 +214,18 @@ export default {
       dialogVisible.value = false
       answerVisible.value = false
       interruptFlag.value = true
+      resetState()
+      // 重置音频流
+      if (sourceBuffer.value) {
+        try {
+          sourceBuffer.value.abort()
+        } catch (error) {
+          console.error('Error aborting source buffer:', error)
+        }
+        mediaSource.value = null
+        sourceBuffer.value = null
+        audioParts.value = []
+      }
     }
 
     const displayText = async (text) => {

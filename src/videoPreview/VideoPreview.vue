@@ -24,7 +24,7 @@
 </template>
 
 <script>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import 'video.js/dist/video-js.css'
 import videojs from 'video.js'
 import QuestionComponent from './QuestionComponent.vue'
@@ -35,13 +35,11 @@ export default {
   },
   setup() {
     const player = ref(null)
-
     const currentQuestion = ref({})
     const currentQuestionIndex = ref(0)
-    const breakDisplayTextFlag = ref(false) //是否动态输出文字
     const askButtonVisible = ref(false)
     const dialogVisible = ref(false)
-    const interactionVisible = ref(false) //是否展示交互区
+    const interactionVisible = ref(false)
     const questionComponent = ref(null)
 
     const videoData = reactive({
@@ -154,7 +152,7 @@ export default {
             askButtonVisible.value = true
           }
 
-          //reset child comp
+          // 重置子组件
           if (questionComponent.value) {
             questionComponent.value.resetState()
           }
@@ -204,7 +202,7 @@ export default {
         }
       })
 
-      checkNextQuestion() // Start checking questions
+      checkNextQuestion()
     })
 
     return {
@@ -304,7 +302,7 @@ export default {
 .question p,
 .dialog-question,
 .dialog-answer {
-  color: #000; /* 设置文本颜色为黑色 */
+  color: #000;
 }
 
 .question p {

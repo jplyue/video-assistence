@@ -3,9 +3,9 @@
 </template>
 
 <script>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import pako from 'pako'
-import { v4 as uuidv4 } from 'uuid' // 导入 uuid 库
+import { v4 as uuidv4 } from 'uuid'
 
 export default {
   name: 'WebSocketComponent',
@@ -15,15 +15,14 @@ export default {
   setup(props, { emit }) {
     const ws = ref(null)
     const connected = ref(false)
-    const audioParts = ref([])
-    const sequenceNumber = ref(0)
-    const mediaSource = ref(null)
-    const sourceBuffer = ref(null)
     const messageQueue = ref([])
     const isWaiting = ref(false)
-    const audioPlayer = ref(null)
 
     const startWebSocket = () => {
+      if (ws.value) {
+        ws.value.close()
+      }
+
       ws.value = new WebSocket('ws://localhost:8080/ws')
       ws.value.binaryType = 'arraybuffer'
 
@@ -47,7 +46,13 @@ export default {
       ws.value.onclose = () => {
         console.log('WebSocket connection closed')
         connected.value = false
+        resetState()
       }
+    }
+
+    const resetWebSocket = () => {
+      resetState()
+      startWebSocket()
     }
 
     const sendMessages = (text) => {
@@ -99,7 +104,7 @@ export default {
           language: 'cn'
         },
         request: {
-          reqid: uuidv4(), // 使用 uuid 生成 reqid
+          reqid: uuidv4(),
           text: text,
           text_type: 'plain',
           operation: 'query',
@@ -154,18 +159,13 @@ export default {
         console.log(`Sequence Number: ${sequenceNumberValue}`)
         console.log(`Payload Size: ${payloadSize} bytes`)
 
-        appendBuffer(payload)
         emit('audioPartReady', payload)
-
-        console.log('audioPartReady', payload)
 
         if (sequenceNumberValue < 0) {
           console.log('audioComplete')
           emit('audioComplete')
-          audioParts.value = []
         }
 
-        // Send the next message after receiving the current one
         isWaiting.value = false
         sendNextMessage()
       } else if (messageType === 0xf) {
@@ -190,70 +190,40 @@ export default {
       }
     }
 
-    const appendBuffer = (data) => {
-      if (sourceBuffer.value && !sourceBuffer.value.updating) {
-        try {
-          sourceBuffer.value.appendBuffer(data)
-        } catch (e) {
-          console.error('SourceBuffer append error:', e)
-          if (e.name === 'QuotaExceededError') {
-            const buffered = sourceBuffer.value.buffered
-            if (buffered.length > 0) {
-              const start = buffered.start(0)
-              const end = buffered.end(0)
-              const currentTime = audioPlayer.value.currentTime
-              const bufferDuration = end - start
-
-              if (bufferDuration > 10) {
-                // Remove old data from the buffer
-                sourceBuffer.value.remove(0, currentTime - 10)
-                sourceBuffer.value.addEventListener(
-                  'updateend',
-                  () => {
-                    sourceBuffer.value.appendBuffer(data)
-                  },
-                  { once: true }
-                )
-              } else {
-                console.error('Buffer full, unable to append data.')
-              }
-            }
-          }
-        }
-      } else {
-        audioParts.value.push(data)
+    const resetState = () => {
+      messageQueue.value = []
+      isWaiting.value = false
+      if (ws.value) {
+        ws.value.close()
       }
     }
 
     onMounted(() => {
       startWebSocket()
-
-      // Initialize MediaSource and SourceBuffer
-      audioPlayer.value = document.createElement('audio')
-      mediaSource.value = new MediaSource()
-      audioPlayer.value.src = URL.createObjectURL(mediaSource.value)
-      mediaSource.value.addEventListener('sourceopen', () => {
-        sourceBuffer.value = mediaSource.value.addSourceBuffer('audio/mpeg')
-        sourceBuffer.value.mode = 'sequence'
-        sourceBuffer.value.addEventListener('updateend', () => {
-          if (audioParts.value.length > 0 && !sourceBuffer.value.updating) {
-            sourceBuffer.value.appendBuffer(audioParts.value.shift())
-          }
-        })
-      })
     })
+
+    onUnmounted(() => {
+      resetState()
+    })
+
+    watch(
+      () => props.text,
+      (newText) => {
+        if (newText) {
+          sendMessages(newText)
+        }
+      }
+    )
 
     return {
       ws,
       connected,
-      audioParts,
-      sequenceNumber,
       startWebSocket,
       sendMessages,
       sendMessage,
       splitText,
       processMessage,
-      appendBuffer
+      resetWebSocket
     }
   }
 }
