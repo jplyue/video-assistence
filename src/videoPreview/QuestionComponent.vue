@@ -1,6 +1,5 @@
 <template>
   <div>
-    <div>{{ question.index }}</div>
     <el-button v-if="askButtonVisible" @click="handleAskButtonClick" class="ask-button"
       >提问</el-button
     >
@@ -206,10 +205,13 @@ export default {
     const closeDialog = () => {
       dialogVisible.value = false
       answerVisible.value = false
+      interruptFlag.value = true
     }
 
     const displayText = async (text) => {
       displayedText.value = ''
+      interruptFlag.value = false
+
       if (!text) return
 
       for (let i = 0; i < text.length; i++) {
@@ -299,13 +301,13 @@ export default {
     }
 
     const submitAnswer = (question) => {
-      answerVisible.value = true
-
       if (question.answerType === 'text') {
         displayText(question.answer)
       } else if (question.answerType === 'audio') {
         displayAudio(question.answer)
       }
+
+      answerVisible.value = true
     }
 
     const handleAskButtonClick = () => {
