@@ -6,6 +6,7 @@ import VideoPreview from '@/videoPreview/VideoPreview.vue'
 import Register from '@/register/Register.vue'
 import Login from '@/login/Login.vue'
 import AssistantManage from '@/assistantManage/AssistantManage.vue'
+import AssistantDetail from '@/assistantDetail/AssistantDetail.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -29,6 +30,10 @@ const router = createRouter({
     {
       path: '/manage',
       component: AssistantManage
+    },
+    {
+      path: '/detail',
+      component: AssistantDetail
     },
     {
       path: '/video-setting',
