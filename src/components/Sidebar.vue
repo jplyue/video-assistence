@@ -4,22 +4,30 @@
       <el-icon><i class="el-icon-setting"></i></el-icon>
       <h2 class="title">Video Assistance</h2>
     </div>
-    <el-menu default-active="1" class="el-menu-vertical-demo" @select="handleMenuSelect">
-      <el-menu-item index="1">
-        <el-icon><i class="el-icon-menu"></i></el-icon>
-        仪表盘
+    <el-menu :default-active="$route.path" class="el-menu-vertical-demo" router>
+      <el-menu-item index="/dashboard">
+        <router-link to="/dashboard" class="router-link">
+          <el-icon><i class="el-icon-menu"></i></el-icon>
+          <span>仪表盘</span>
+        </router-link>
       </el-menu-item>
-      <el-menu-item index="2">
-        <el-icon><i class="el-icon-user"></i></el-icon>
-        助手管理
+      <el-menu-item index="/manage">
+        <router-link to="/manage" class="router-link">
+          <el-icon><i class="el-icon-user"></i></el-icon>
+          <span>助手管理</span>
+        </router-link>
       </el-menu-item>
-      <el-menu-item index="3">
-        <el-icon><i class="el-icon-setting"></i></el-icon>
-        设置
+      <el-menu-item index="/settings">
+        <router-link to="/settings" class="router-link">
+          <el-icon><i class="el-icon-setting"></i></el-icon>
+          <span>设置</span>
+        </router-link>
       </el-menu-item>
-      <el-menu-item index="4">
-        <el-icon><i class="el-icon-bell"></i></el-icon>
-        通知
+      <el-menu-item index="/notifications">
+        <router-link to="/notifications" class="router-link">
+          <el-icon><i class="el-icon-bell"></i></el-icon>
+          <span>通知</span>
+        </router-link>
       </el-menu-item>
     </el-menu>
   </el-aside>
@@ -27,8 +35,8 @@
 
 <script>
 import { defineComponent } from 'vue'
-import { useRouter } from 'vue-router'
 import { ElAside, ElMenu, ElMenuItem, ElIcon } from 'element-plus'
+import { RouterLink } from 'vue-router'
 
 export default defineComponent({
   name: 'Sidebar',
@@ -36,25 +44,8 @@ export default defineComponent({
     ElAside,
     ElMenu,
     ElMenuItem,
-    ElIcon
-  },
-  setup() {
-    const router = useRouter()
-
-    const handleMenuSelect = (index) => {
-      if (index === '1') {
-        router.push('/dashboard')
-      } else if (index === '2') {
-        router.push('/manage')
-      } else {
-        console.log('选中菜单项', index)
-        // 其他路由跳转逻辑
-      }
-    }
-
-    return {
-      handleMenuSelect
-    }
+    ElIcon,
+    RouterLink
   }
 })
 </script>
@@ -85,5 +76,20 @@ export default defineComponent({
   font-size: 24px;
   font-weight: bold;
   color: #000000;
+}
+
+.router-link {
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  align-items: center;
+}
+
+.router-link:hover {
+  text-decoration: none;
+}
+
+.el-menu-item.is-active .router-link {
+  color: #409eff; /* Element Plus 主色 */
 }
 </style>
