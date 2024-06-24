@@ -31,6 +31,7 @@ const router = createRouter({
       path: '/manage',
       component: AssistantManage
     },
+    { path: '/assistant/:id', component: AssistantDetail, props: true },
     {
       path: '/detail',
       component: AssistantDetail
