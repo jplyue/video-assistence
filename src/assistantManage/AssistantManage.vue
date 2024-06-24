@@ -94,12 +94,6 @@
               <el-table-column prop="name" label="助手名称"></el-table-column>
               <el-table-column prop="remarks" label="备注"></el-table-column>
               <el-table-column prop="uploadTime" label="上传时间"></el-table-column>
-              <el-table-column label="操作">
-                <template #default="scope">
-                  <el-button type="primary" @click="viewKnowledge(scope.row)">观看</el-button>
-                  <el-button type="primary" @click="settings(scope.row)">设置</el-button>
-                </template>
-              </el-table-column>
               <el-table-column label="删除">
                 <template #default="scope">
                   <el-button type="primary" @click="deleteItem(scope.row)">删除</el-button>
