@@ -11,6 +11,12 @@
           <span>仪表盘</span>
         </router-link>
       </el-menu-item>
+      <el-menu-item index="/create">
+        <router-link to="/manage" class="router-link">
+          <el-icon><i class="el-icon-user"></i></el-icon>
+          <span>助手创建</span>
+        </router-link>
+      </el-menu-item>
       <el-menu-item index="/manage">
         <router-link to="/manage" class="router-link">
           <el-icon><i class="el-icon-user"></i></el-icon>

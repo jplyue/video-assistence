@@ -5,6 +5,7 @@
     <el-container>
       <el-header class="header">
         <h2>助手管理</h2>
+        <el-button type="primary" @click="createAssistant">新建助手</el-button>
       </el-header>
       <el-main>
         <div>
@@ -56,33 +57,21 @@ export default {
       assistants.value = assistants.value.filter((assistant) => assistant.id !== id)
     }
 
+    const createAssistant = () => {
+      router.push(`/create`)
+    }
+
     return {
       assistants,
       handleEdit,
-      removeAssistant
+      removeAssistant,
+      createAssistant
     }
   }
 }
 </script>
 
-<style>
-html,
-body,
-#app {
-  height: 100%;
-}
-
-.el-container {
-  height: 100%;
-}
-
-.assistant-management .header {
-  background-color: #f5f5f5;
-  padding: 20px;
-  text-align: center;
-}
-
-.el-main {
-  padding: 20px;
+<style scoped>
+.assistant-management .el-main {
 }
 </style>

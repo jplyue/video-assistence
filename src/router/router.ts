@@ -7,6 +7,7 @@ import Register from '@/register/Register.vue'
 import Login from '@/login/Login.vue'
 import AssistantManage from '@/assistantManage/AssistantManage.vue'
 import AssistantDetail from '@/assistantDetail/AssistantDetail.vue'
+import AssistantCreate from '@/assistantCreate/AssistantCreate.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -26,6 +27,10 @@ const router = createRouter({
     {
       path: '/login',
       component: Login
+    },
+    {
+      path: '/create',
+      component: AssistantCreate
     },
     {
       path: '/manage',

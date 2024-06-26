@@ -1,12 +1,18 @@
 <template>
   <div id="video-setting" class="container">
+    <el-breadcrumb separator="/">
+      <el-breadcrumb-item to="/dashboard">主页</el-breadcrumb-item>
+      <el-breadcrumb-item to="/manage">助手管理</el-breadcrumb-item>
+      <el-breadcrumb-item>视频设置</el-breadcrumb-item>
+    </el-breadcrumb>
+
     <div class="video-player-wrapper">
       <video ref="videoPlayer" class="video-js vjs-default-skin" controls></video>
     </div>
     <div class="time-display">
       <span>{{ formatTime(currentTime) }}</span>
       <el-tooltip content="复制时间戳">
-        <el-button type="primary" icon="el-icon-document-copy" size="mini" @click="copyTimestamp">
+        <el-button type="primary" icon="el-icon-document-copy" size="small" @click="copyTimestamp">
           复制时间戳
         </el-button>
       </el-tooltip>
@@ -17,14 +23,19 @@
       </template>
     </el-slider>
 
-    <el-form class="form-area">
+    <el-form class="form-area" label-width="160px">
       <!-- 交互区 -->
       <el-form-item label="交互区">
         <el-radio-group v-model="interactionPosition">
-          <el-radio label="top">上面</el-radio>
-          <el-radio label="right">右面</el-radio>
-          <el-radio label="bottom">下面</el-radio>
+          <el-radio :value="'top'">上面</el-radio>
+          <el-radio :value="'right'">右面</el-radio>
+          <el-radio :value="'bottom'">下面</el-radio>
         </el-radio-group>
+      </el-form-item>
+
+      <!-- 提问按钮 -->
+      <el-form-item label="是否显示提问按钮">
+        <el-checkbox v-model="showAskButton">显示提问按钮</el-checkbox>
       </el-form-item>
 
       <!-- 设置问题 -->
@@ -49,8 +60,8 @@
                 />
               </el-form-item>
               <el-radio-group v-model="scope.row.questionType">
-                <el-radio label="text">文字</el-radio>
-                <el-radio label="audio">语音</el-radio>
+                <el-radio :value="'text'">文字</el-radio>
+                <el-radio :value="'audio'">语音</el-radio>
               </el-radio-group>
             </template>
           </el-table-column>
@@ -64,42 +75,16 @@
                   placeholder="请输入回答"
                 />
               </el-form-item>
-              <el-radio-group v-model="scope.row.answerType">
-                <el-radio label="text">文字</el-radio>
-                <el-radio label="audio">语音</el-radio>
-                <el-radio label="phototalk">照片对话</el-radio>
-                <el-radio label="knowledgeBase">知识库</el-radio>
-              </el-radio-group>
+              <el-checkbox-group v-model="scope.row.answerTypes">
+                <el-checkbox :value="'text'">文字</el-checkbox>
+                <el-checkbox :value="'audio'">语音</el-checkbox>
+                <el-checkbox :value="'phototalk'">照片对话</el-checkbox>
+              </el-checkbox-group>
             </template>
           </el-table-column>
           <el-table-column label="时间" width="150">
             <template #default="scope">
               <el-input v-model="scope.row.time" placeholder="时间" />
-            </template>
-          </el-table-column>
-          <el-table-column label="操作" width="150">
-            <template #default="scope">
-              <div class="button-group">
-                <el-button size="mini" @click="showQuestionPopover(scope.$index)">
-                  用户提问机制
-                </el-button>
-                <el-popover
-                  v-model:visible="questionPopoverVisible[scope.$index]"
-                  placement="top"
-                  width="200"
-                  trigger="manual"
-                >
-                  <div class="dialog-content">
-                    <el-radio-group v-model="scope.row.action" size="mini">
-                      <el-radio-button label="pause">暂停视频</el-radio-button>
-                      <el-radio-button label="button">添加按钮</el-radio-button>
-                    </el-radio-group>
-                  </div>
-                  <template v-slot:reference>
-                    <span></span>
-                  </template>
-                </el-popover>
-              </div>
             </template>
           </el-table-column>
         </el-table>
@@ -139,9 +124,11 @@ export default {
   },
   setup() {
     const player = ref(null)
+    const videoPlayer = ref(null)
     const interactionPosition = ref('top')
     const shareSetting = ref(false)
     const loginRequired = ref(false)
+    const showAskButton = ref(false)
     const questions = ref(
       Array.from({ length: 5 }, (_, index) => ({
         index: index + 1,
@@ -149,7 +136,7 @@ export default {
         answer: '',
         time: '',
         questionType: 'text',
-        answerType: 'text',
+        answerTypes: ['text'],
         action: 'pause' // 默认设置为暂停视频
       }))
     )
@@ -164,7 +151,7 @@ export default {
 
     onMounted(async () => {
       const videojs = await import('video.js')
-      player.value = videojs.default(document.querySelector('.video-js'), {
+      player.value = videojs.default(videoPlayer.value, {
         sources: [
           {
             src: './example.mp4',
@@ -279,6 +266,7 @@ export default {
     })
 
     return {
+      videoPlayer,
       interactionPosition,
       shareSetting,
       loginRequired,
@@ -297,13 +285,14 @@ export default {
       showQuestionPopover,
       pauseVideo,
       addQuestion,
-      popoverAction
+      popoverAction,
+      showAskButton
     }
   }
 }
 </script>
 
-<style lang="scss">
+<style lang="scss" scoped>
 @import 'video.js/dist/video-js.css';
 
 #video-setting.container {
