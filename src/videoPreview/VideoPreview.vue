@@ -1,10 +1,16 @@
 <template>
   <div id="video-preview" class="container">
+    <el-breadcrumb separator="/">
+      <el-breadcrumb-item to="/dashboard">主页</el-breadcrumb-item>
+      <el-breadcrumb-item to="/manage">助手管理</el-breadcrumb-item>
+      <el-breadcrumb-item>视频设置</el-breadcrumb-item>
+    </el-breadcrumb>
+
     <div class="button-group">
       <el-button type="primary" @click="setInteractionPosition('top')">顶部</el-button>
       <el-button type="primary" @click="setInteractionPosition('right')">右边</el-button>
       <el-button type="primary" @click="setInteractionPosition('bottom')">底部</el-button>
-      <!-- <el-button type="primary" @click="setInteractionPosition('overlay')">浮层</el-button> -->
+      <el-button type="primary" @click="setInteractionPosition('overlay')">浮层</el-button>
     </div>
     <div :class="['interactive-position-wrapper', videoData.interactionPosition]">
       <div :class="['video-wrapper', videoData.interactionPosition]">
@@ -16,7 +22,7 @@
           :interaction-visible="interactionVisible"
           :question="currentQuestion"
           :ask-button-visible="askButtonVisible"
-          :position-overlay="videoData.interactionPosition === 'overlay'"
+          :dialog-visible="dialogVisible"
         />
       </div>
     </div>
@@ -24,7 +30,7 @@
 </template>
 
 <script>
-import { ref, reactive, onMounted, watch } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import 'video.js/dist/video-js.css'
 import videojs from 'video.js'
 import QuestionComponent from './QuestionComponent.vue'
@@ -76,16 +82,6 @@ export default {
           action: 'pause'
         },
         {
-          index: '4',
-          question: '这是第1-4个问题',
-          answer:
-            '1-4的回答：《哈利·波特》是由英国作家J.K.罗琳创作的一系列奇幻文学作品。系列共包括七部小说，主要讲述的是一个叫哈利·波特的男孩在霍格沃茨魔法学校的学习生活以及与黑魔法师伏地魔的斗争故事。这一系列作品赢得了全球范围内的广泛赞誉和巨大商业成功，深受各个年龄段读者的喜爱。哈利·波特系列不仅仅是一部儿童文学作品，它探讨了诸如友谊、勇气、爱、牺牲、死亡和种族歧视等深刻的主题。在故事的开始，哈利是一个孤儿，被寄养在姨妈家中，过着悲惨的生活。在他11岁生日那天，哈利收到了一封霍格沃茨魔法学校的录取通知书，得知自己是一个巫师。从此，他的生活发生了巨大的变化。在霍格沃茨，哈利结识了两个最好的朋友——赫敏·格兰杰和罗恩·韦斯莱。他们三人组成了一个不可分割的团队，经历了无数的冒险和挑战。每一部小说都对应哈利在霍格沃茨的一个学年，故事逐步揭示了哈利的身世之谜，以及他与伏地魔之间的宿命对决。系列的高潮部分发生在《哈利·波特与死亡圣器》中，哈利和他的朋友们必须找到并摧毁伏地魔的魂器，以彻底击败他。最终，哈利在一场史诗般的战斗中战胜了伏地魔，恢复了魔法界的和平。除了小说外，哈利·波特系列还被改编成了电影、戏剧、电子游戏等多种形式，进一步扩大了其影响力。电影版由丹尼尔·雷德克里夫、艾玛·沃特森和鲁伯特·格林特主演，他们的表演为角色赋予了新的生命。《哈利·波特》系列不仅仅是一种文化现象，影响了一代又一代的读者。书中的魔法世界激发了无数人的想象力，让人们相信奇迹和勇气的力量。无论是年轻的读者，还是成年人，都能在这个充满魔法和冒险的世界中找到自己的共鸣。哈利·波特的成功也激励了许多新的作家和创作者，推动了奇幻文学的发展。许多读者在哈利·波特的陪伴下成长，这个系列在他们的心中占据了特殊的位置。它不仅仅是一部小说，更是一种情感纽带，将全世界的粉丝紧密联系在一起。总之，《哈利·波特》系列是现代文学史上一颗璀璨的明珠。它不仅展示了一个奇幻的魔法世界，更通过一个个动人的故事传递了宝贵的人生哲理和价值观。在未来的岁月中，这个系列将继续被人们所喜爱和铭记，成为经典文学作品中的一部分。',
-          time: '00:08',
-          questionType: 'text',
-          answerType: 'knowledgebase',
-          action: 'button'
-        },
-        {
           index: '5',
           question: '这是第2-1个问题',
           answer:
@@ -98,7 +94,6 @@ export default {
         {
           index: '6',
           question: '这是第2-2个问题',
-          // answer: '这是第2-2个问题的答案',
           answer:
             '在很久很久以前，有一个遥远的王国，这个王国位于一片美丽的大陆上。大陆四季分明，春天花开遍地，夏天绿树成荫，秋天果实累累，冬天白雪皑皑。王国的人民过着幸福而又平静的生活。王国的中心有一座高高的城堡，城堡的主人是慈祥的国王和美丽的王后，他们有一个聪明可爱的小公主。小公主不仅美丽动人，而且非常聪明，她喜欢学习各种知识，经常去城堡的图书馆阅读书籍。有一天，小公主在图书馆里发现了一本古老的魔法书，这本书记录着各种神奇的魔法和传说中的生物。小公主对这些魔法和生物充满了好奇，于是她决定要学习魔法，并探寻这些神秘的生物。小公主每天都在图书馆里阅读魔法书，学习各种魔法咒语和魔法技巧。她发现自己非常有天赋，很快就掌握了许多强大的魔法。她的魔法老师是一位年长的巫师，这位巫师非常欣赏小公主的天赋和努力，经常耐心地指导她。随着时间的推移，小公主的魔法越来越强大，她决定要去寻找传说中的神秘生物。她带上了自己的魔法书和一些必需的物品，开始了她的冒险之旅。她走过了茂密的森林，翻过了高高的山脉，穿过了辽阔的草原，经历了许多艰难险阻，终于找到了传说中的神秘生物。这些生物包括善良的龙、智慧的独角兽、神秘的精灵和强大的巨人。小公主用自己的善良和智慧赢得了这些生物的友谊，他们教会了她更多的魔法和知识。小公主在这些生物的帮助下，成功地打败了一个企图统治王国的邪恶巫师，拯救了她的家园。从那以后，小公主成为了王国的英雄，她的故事被传颂了许多年。她不仅用魔法保护了王国，还用自己的智慧和勇气赢得了人民的爱戴。小公主最终继承了王位，成为了一位英明的女王，继续带领她的人民过着幸福和平的生活。这段长文本展示了小公主的成长和冒险，她的勇气和智慧，以及她与各种神秘生物的友谊。这是一个充满了魔法和冒险的故事，适合用来测试你的代码的处理能力。',
           time: '00:12',
@@ -114,26 +109,9 @@ export default {
           questionType: 'audio',
           answerType: 'phototalk',
           action: 'pause'
-        },
-        {
-          index: '8',
-          question: '这是第2-4个问题',
-          answer: '2-3的回答：这是第三个问题的答案',
-          time: '00:16',
-          questionType: 'audio',
-          answerType: 'knowledgebase',
-          action: 'button'
         }
       ]
     })
-
-    const checkNextQuestion = () => {
-      setTimeout(() => {
-        if (!player.value.paused() && currentQuestionIndex.value < videoData.questions.length) {
-          checkTime()
-        }
-      }, 100)
-    }
 
     const checkTime = () => {
       const currentVideoTime = player.value.currentTime()
@@ -143,14 +121,15 @@ export default {
 
         if (Math.abs(currentVideoTime - questionTime) < 0.5) {
           console.log('pause')
+          player.value.pause()
 
           if (question.action === 'pause') {
-            player.value.pause()
             askButtonVisible.value = false
           } else if (question.action === 'button') {
-            player.value.pause()
             askButtonVisible.value = true
           }
+
+          videoData.interactionPosition === 'overlay' && (dialogVisible.value = true)
 
           // 重置子组件
           if (questionComponent.value) {
@@ -161,8 +140,8 @@ export default {
           showQuestion(question)
 
           currentQuestionIndex.value++ // Move to the next question
+          console.log('currentQuestionIndex:', currentQuestionIndex.value)
         }
-        checkNextQuestion() // Continue checking the next question
       }
     }
 
@@ -186,6 +165,10 @@ export default {
       videoData.interactionPosition = position
     }
 
+    const closeDialog = () => {
+      dialogVisible.value = false
+    }
+
     onMounted(() => {
       player.value = videojs(document.querySelector('.video-js'), {
         sources: [
@@ -197,12 +180,8 @@ export default {
       })
 
       player.value.on('timeupdate', () => {
-        if (!dialogVisible.value) {
-          checkTime()
-        }
+        checkTime()
       })
-
-      checkNextQuestion()
     })
 
     return {
@@ -213,7 +192,9 @@ export default {
       interactionVisible,
       askButtonVisible,
       setInteractionPosition,
-      questionComponent
+      questionComponent,
+      closeDialog,
+      currentQuestionIndex
     }
   }
 }
@@ -227,9 +208,7 @@ export default {
   max-width: 90vw;
   margin: 50px auto;
   padding: 20px;
-  // background-color: white;
   border-radius: 10px;
-  // box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .button-group {
@@ -267,7 +246,7 @@ export default {
   &.top {
     flex-direction: column-reverse;
   }
-  // 右侧时的style
+
   &.right {
     flex-direction: row;
     height: 80vh;
@@ -288,6 +267,9 @@ export default {
   }
   &.bottom {
     flex-direction: column;
+  }
+  &.overlay {
+    display: block;
   }
 }
 
