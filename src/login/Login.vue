@@ -3,7 +3,7 @@
     <div class="login-form">
       <h2 class="page-title">Login</h2>
 
-      <el-form :model="form" :rules="rules" ref="form" label-width="100px" label-position="left">
+      <el-form :model="form" :rules="rules" ref="formRef" label-width="100px" label-position="left">
         <el-form-item label="手机号" prop="phone">
           <el-input
             v-model="form.phone"
@@ -29,65 +29,95 @@
   </div>
 </template>
 
-<script>
-import { ref } from 'vue'
-import { ElForm, ElFormItem, ElInput, ElButton } from 'element-plus'
+<script lang="ts" setup>
+import { ref, reactive } from 'vue'
+import { ElMessage } from 'element-plus'
+import { request, saveTokenInCookie } from '@/request'
+import { useRouter } from 'vue-router'
 
-export default {
-  components: {
-    ElForm,
-    ElFormItem,
-    ElInput,
-    ElButton
-  },
-  setup() {
-    const form = ref({
-      phone: '',
-      verification: ''
-    })
+const router = useRouter()
 
-    const rules = {
-      phone: [
-        { required: true, message: '请输入手机号', trigger: 'blur' },
-        { pattern: /^1[3456789]\d{9}$/, message: '手机号格式不正确', trigger: 'blur' }
-      ],
-      verification: [{ required: true, message: '请输入验证码', trigger: 'blur' }]
-    }
+const form = reactive({
+  phone: '18511759286',
+  verification: '188796'
+})
 
-    const countdown = ref(0)
-    let timer = null
+const rules = {
+  phone: [
+    { required: true, message: '请输入手机号', trigger: 'blur' },
+    { pattern: /^1[3456789]\d{9}$/, message: '手机号格式不正确', trigger: 'blur' }
+  ],
+  verification: [{ required: true, message: '请输入验证码', trigger: 'blur' }]
+}
 
-    // 发送验证码
-    const sendVerificationCode = () => {
-      if (countdown.value > 0) return
+const formRef = ref(null)
+const countdown = ref(0)
+let timer = null
 
-      // 模拟发送验证码
-      console.log('发送验证码')
+// 发送验证码
+const sendVerificationCode = async () => {
+  if (countdown.value > 0) return
 
-      countdown.value = 60 // 设置倒计时时间，例如 60 秒
-      timer = setInterval(() => {
-        countdown.value--
-        if (countdown.value <= 0) {
-          clearInterval(timer)
-          timer = null
-        }
-      }, 1000)
-    }
-
-    // 提交表单
-    const submitForm = () => {
-      // 在这里可以进行表单提交逻辑
-      console.log('登录表单提交', form.value)
-    }
-
-    return {
-      form,
-      rules,
-      countdown,
-      sendVerificationCode,
-      submitForm
-    }
+  if (!form.phone) {
+    ElMessage.error('请输入手机号')
+    return
   }
+
+  try {
+    const response = await request({
+      url: '/register/code',
+      method: 'POST',
+      data: { phone: form.phone }
+    })
+    console.log('验证码已发送', response)
+
+    // 开始倒计时
+    countdown.value = 60 // 设置倒计时时间，例如 60 秒
+    timer = setInterval(() => {
+      countdown.value--
+      if (countdown.value <= 0) {
+        clearInterval(timer)
+        timer = null
+      }
+    }, 1000)
+  } catch (error) {
+    console.error('发送验证码失败', error)
+  }
+}
+
+// 提交表单
+const submitForm = async () => {
+  formRef.value.validate(async (valid) => {
+    if (valid) {
+      console.log('登录表单提交', form)
+
+      try {
+        const response = await request({
+          url: '/user/login',
+          method: 'POST',
+          data: { phone: form.phone, code: form.verification }
+        })
+        if (response.code === 200) {
+          ElMessage.success('登录成功！')
+          //save token
+          const { token } = response.data
+          saveTokenInCookie(token)
+
+          setTimeout(() => {
+            router.push('/dashboard')
+          }, 3000)
+        } else {
+          ElMessage.error(response.message || '登录失败')
+        }
+      } catch (error) {
+        console.error('登录失败', error)
+        ElMessage.error('登录失败，请重试')
+      }
+    } else {
+      console.log('Form validation failed!')
+      return false
+    }
+  })
 }
 </script>
 
@@ -96,7 +126,6 @@ export default {
   display: flex;
   justify-content: center;
   align-items: center;
-
   width: 100%;
   height: 100vh;
 }

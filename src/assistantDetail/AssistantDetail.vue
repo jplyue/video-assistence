@@ -16,14 +16,19 @@
               <el-form-item label="标题">
                 <el-input v-model="videoForm.title" style="width: 50%"></el-input>
               </el-form-item>
+              <el-form-item label="描述">
+                <el-input v-model="videoForm.desc" style="width: 50%"></el-input>
+              </el-form-item>
               <el-form-item label="上传视频">
                 <el-upload
                   ref="upload"
-                  class="upload-demo"
-                  action="https://run.mocky.io/v3/9d059bf9-4660-45f2-925d-ce80ad6c4d15"
+                  class="upload"
+                  action="/video/upload"
+                  accept="video/mp4,video/quicktime"
+                  :before-upload="beforeUploadVideo"
+                  :on-success="handleUploadSuccess"
                   :limit="1"
                   :on-exceed="handleExceed"
-                  :auto-upload="false"
                 >
                   <template #trigger>
                     <el-button type="primary">选择文件</el-button>
@@ -41,9 +46,10 @@
             <h2 class="section-title">视频列表</h2>
             <el-table :data="videoList" style="width: 100%">
               <el-table-column prop="index" label="#" width="50"></el-table-column>
-              <el-table-column prop="name" label="助手名称"></el-table-column>
-              <el-table-column prop="remarks" label="备注"></el-table-column>
-              <el-table-column prop="uploadTime" label="上传时间"></el-table-column>
+              <el-table-column prop="title" label="标题"></el-table-column>
+              <el-table-column label="上传时间">
+                <template #default="scope">{{ formatDate(scope.row.created_at) }}</template>
+              </el-table-column>
               <el-table-column label="操作">
                 <template #default="scope">
                   <el-button type="primary" @click="viewVideo(scope.row)">观看</el-button>
@@ -52,8 +58,7 @@
               </el-table-column>
               <el-table-column label="删除">
                 <template #default="scope">
-                  <el-button type="primary" @click="deleteItem(scope.row)">删除</el-button>
-                  <el-button type="primary" @click="copyLink(scope.row)">复制链接</el-button>
+                  <el-button type="primary" @click="deleteItem(scope.row, 'video')">删除</el-button>
                 </template>
               </el-table-column>
             </el-table>
@@ -66,14 +71,19 @@
               <el-form-item label="标题">
                 <el-input v-model="knowledgeForm.title" style="width: 50%"></el-input>
               </el-form-item>
+              <el-form-item label="描述">
+                <el-input v-model="knowledgeForm.desc" style="width: 50%"></el-input>
+              </el-form-item>
               <el-form-item label="上传文件">
                 <el-upload
                   ref="upload"
-                  class="upload-demo"
-                  action="https://run.mocky.io/v3/9d059bf9-4660-45f2-925d-ce80ad6c4d15"
+                  class="upload"
+                  action="/file/create"
+                  accept=".txt,.pdf"
+                  :before-upload="beforeUploadKnowledge"
+                  :on-success="handleUploadSuccess"
                   :limit="1"
                   :on-exceed="handleExceed"
-                  :auto-upload="false"
                 >
                   <template #trigger>
                     <el-button type="primary">选择文件</el-button>
@@ -91,12 +101,15 @@
             <h2 class="section-title">知识列表</h2>
             <el-table :data="knowledgeList" style="width: 100%">
               <el-table-column prop="index" label="#" width="50"></el-table-column>
-              <el-table-column prop="name" label="助手名称"></el-table-column>
-              <el-table-column prop="remarks" label="备注"></el-table-column>
-              <el-table-column prop="uploadTime" label="上传时间"></el-table-column>
+              <el-table-column prop="title" label="标题"></el-table-column>
+              <el-table-column label="上传时间">
+                <template #default="scope">{{ formatDate(scope.row.created_at) }}</template>
+              </el-table-column>
               <el-table-column label="删除">
                 <template #default="scope">
-                  <el-button type="primary" @click="deleteItem(scope.row)">删除</el-button>
+                  <el-button type="primary" @click="deleteItem(scope.row, 'knowledge')"
+                    >删除</el-button
+                  >
                 </template>
               </el-table-column>
             </el-table>
@@ -108,36 +121,64 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import AssistantSidebar from './AssistantSidebar.vue'
+import { request } from '@/request'
 
 const router = useRouter()
+const route = useRoute()
 
 const videoForm = ref({
-  title: ''
+  title: '',
+  desc: ''
 })
 
 const knowledgeForm = ref({
-  title: ''
+  title: '',
+  desc: ''
 })
 
-const videoList = ref([
-  { index: 1, name: '助手1', remarks: '备注1', uploadTime: '2024-06-22' },
-  { index: 2, name: '助手2', remarks: '备注2', uploadTime: '2024-06-21' }
-])
+const videoList = ref([])
+const knowledgeList = ref([])
 
-const knowledgeList = ref([
-  { index: 1, name: '知识1', remarks: '备注1', uploadTime: '2024-06-22' },
-  { index: 2, name: '知识2', remarks: '备注2', uploadTime: '2024-06-21' }
-])
+const fetchDetails = async () => {
+  const assistantId = route.query.assistant_id
+  try {
+    const response = await request(
+      {
+        url: '/program/detail',
+        method: 'POST',
+        data: { assistant_id: assistantId }
+      },
+      true
+    )
+    if (response.code === 200) {
+      videoList.value =
+        response.data.video_info.map((item, index) => ({ ...item, index: index + 1 })) || []
+      knowledgeList.value = response.data.file_info
+        ? [{ ...response.data.file_info, index: 1 }]
+        : []
+    } else {
+      ElMessage.error('获取详情失败')
+    }
+  } catch (error) {
+    ElMessage.error('获取详情失败')
+    console.error(error)
+  }
+}
 
-const handleSuccess = (response, file, fileList) => {
+const formatDate = (dateString) => {
+  return dateString.replace('T', ' ')
+}
+
+const handleUploadSuccess = (response, file, fileList) => {
   ElMessage.success('上传成功')
   console.log('response:', response)
   console.log('file:', file)
   console.log('fileList:', fileList)
+  fetchDetails()
 }
 
 const handlePreview = (file) => {
@@ -148,9 +189,135 @@ const handleRemove = (file, fileList) => {
   console.log('remove:', file, fileList)
 }
 
-const beforeUpload = (file) => {
-  console.log('beforeUpload:', file)
-  return true
+const beforeUploadKnowledge = async (file) => {
+  console.log('Before upload file:', file)
+
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('title', knowledgeForm.value.title)
+  formData.append('desc', knowledgeForm.value.desc)
+  formData.append('assistant_id', route.query.assistant_id)
+  formData.append('store_id', route.query.store_id)
+
+  try {
+    const response = await request(
+      {
+        url: '/file/create',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        },
+        data: formData
+      },
+      true
+    )
+
+    if (response.code === 200) {
+      ElMessage.success('文件上传成功')
+      handleUploadSuccess(response, file, [])
+    } else {
+      ElMessage.error('文件上传失败')
+    }
+  } catch (error) {
+    ElMessage.error('文件上传失败')
+    console.error(error)
+  }
+
+  return false
+}
+
+const beforeUploadVideo = async (file) => {
+  console.log('Before upload file:', file)
+
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('title', videoForm.value.title)
+  formData.append('desc', videoForm.value.desc)
+  formData.append('assistant_id', route.query.assistant_id)
+  formData.append('store_id', route.query.store_id)
+  formData.append('assistant_show', 1)
+  formData.append('share_login', 1)
+  formData.append('answer_choose', 1)
+
+  try {
+    const response = await request(
+      {
+        url: '/video/upload',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        },
+        data: formData
+      },
+      true
+    )
+
+    if (response.code === 200) {
+      handleUploadSuccess(response, file, [])
+    } else {
+      ElMessage.error('文件上传失败')
+    }
+  } catch (error) {
+    ElMessage.error('文件上传失败')
+    console.error(error)
+  }
+
+  return false
+}
+
+const deleteItem = async (row, type) => {
+  if (type === 'video') {
+    const requestData = {
+      video_id: row.id
+    }
+    try {
+      const response = await request(
+        {
+          url: '/video/delete',
+          method: 'POST',
+          data: requestData
+        },
+        true
+      )
+
+      if (response.code === 200) {
+        ElMessage.success('视频删除成功')
+        fetchDetails()
+      } else {
+        ElMessage.error('视频删除失败')
+      }
+    } catch (error) {
+      ElMessage.error('视频删除失败')
+      console.error(error)
+    }
+  } else {
+    const requestData = {
+      file_id: row.file_id,
+      store_id: row.store_id,
+      assistant_id: row.assistant_id
+    }
+
+    try {
+      const response = await request(
+        {
+          url: '/file/delete',
+          method: 'POST',
+          data: requestData
+        },
+        true
+      )
+
+      if (response.code === 200) {
+        ElMessage.success('文件删除成功')
+        fetchDetails()
+      } else {
+        ElMessage.error('文件删除失败')
+      }
+    } catch (error) {
+      ElMessage.error('文件删除失败')
+      console.error(error)
+    }
+  }
 }
 
 const handleExceed = (files, fileList) => {
@@ -160,33 +327,41 @@ const handleExceed = (files, fileList) => {
 const viewVideo = (row) => {
   console.log('Navigating to video preview:', row)
   router
-    .push({ path: '/video-preview', query: { name: row.name } })
+    .push({
+      path: '/video-preview',
+      query: { video_id: row.id, assistant_id: row.assistant_id, url: row.video_data }
+    })
     .catch((err) => console.error(err))
 }
 
 const viewKnowledge = (row) => {
   console.log('Navigating to knowledge preview:', row)
   router
-    .push({ path: '/knowledge-preview', query: { name: row.name } })
+    .push({
+      path: '/knowledge-preview',
+      query: { name: row.title, assistant_id: row.assistant_id, store_id: row.store_id }
+    })
     .catch((err) => console.error(err))
 }
 
 const settings = (row) => {
   console.log('Navigating to video settings:', row)
   router
-    .push({ path: '/video-setting', query: { name: row.name } })
+    .push({
+      path: '/video-setting',
+      query: { video_id: row.id, assistant_id: row.assistant_id, store_id: row.store_id }
+    })
     .catch((err) => console.error(err))
-}
-
-const deleteItem = (row) => {
-  console.log('Deleting item:', row)
-  ElMessage.warning(`删除助手：${row.name}`)
 }
 
 const copyLink = (row) => {
   console.log('Copying link for item:', row)
-  ElMessage.success(`复制链接：${row.name}`)
+  ElMessage.success(`复制链接：${row.title}`)
 }
+
+onMounted(() => {
+  fetchDetails()
+})
 </script>
 
 <style scoped>

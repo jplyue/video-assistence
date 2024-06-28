@@ -12,41 +12,89 @@
       <el-button type="primary" @click="setInteractionPosition('bottom')">底部</el-button>
       <el-button type="primary" @click="setInteractionPosition('overlay')">浮层</el-button>
     </div>
+    <div>
+      <el-button @click="handlePause" class="control-button">暂停</el-button>
+      <el-button @click="handleAsk" class="control-button">提问</el-button>
+    </div>
     <div :class="['interactive-position-wrapper', videoData.interactionPosition]">
       <div :class="['video-wrapper', videoData.interactionPosition]">
         <video ref="videoPlayer" class="video-js vjs-default-skin" controls></video>
       </div>
       <div class="interaction-area">
-        <QuestionComponent
-          ref="questionComponent"
-          :interaction-visible="interactionVisible"
-          :question="currentQuestion"
-          :ask-button-visible="askButtonVisible"
-          :dialog-visible="dialogVisible"
-        />
+        <div class="video-ask">
+          <QuestionComponent
+            ref="questionComponent"
+            :interaction-visible="interactionVisible"
+            :question="currentQuestion"
+            :dialog-visible="dialogVisible"
+          />
+        </div>
+        <div class="user-chat-area">
+          <div v-for="(chat, index) in chatHistory" :key="index" class="chat-message">
+            <div class="chat-user" v-if="chat.sender === 'user'">
+              <p><strong>我：</strong> {{ chat.message }}</p>
+            </div>
+            <div class="chat-server" v-else>
+              <p><strong>助手：</strong> {{ chat.message }}</p>
+            </div>
+          </div>
+        </div>
       </div>
+    </div>
+
+    <div v-if="askButtonClicked" class="chat-input">
+      <el-input v-model="userQuestion" placeholder="请输入问题..." class="input-box"></el-input>
+      <el-button type="primary" @click="sendQuestion">发送</el-button>
     </div>
   </div>
 </template>
 
 <script>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
 import 'video.js/dist/video-js.css'
 import videojs from 'video.js'
 import QuestionComponent from './QuestionComponent.vue'
+import { useRoute } from 'vue-router'
+import { request } from '@/request' // 确保request函数已经定义并导入
+
+//convert video time to xx:xx
+const formatTime = (timeInSeconds) => {
+  const hours = Math.floor(timeInSeconds / 3600)
+    .toString()
+    .padStart(2, '0')
+  const minutes = Math.floor((timeInSeconds % 3600) / 60)
+    .toString()
+    .padStart(2, '0')
+  const seconds = Math.floor(timeInSeconds % 60)
+    .toString()
+    .padStart(2, '0')
+  return `${hours}:${minutes}:${seconds}`
+}
 
 export default {
   components: {
     QuestionComponent
   },
   setup() {
+    const route = useRoute()
     const player = ref(null)
     const currentQuestion = ref({})
     const currentQuestionIndex = ref(0)
-    const askButtonVisible = ref(false)
     const dialogVisible = ref(false)
     const interactionVisible = ref(false)
     const questionComponent = ref(null)
+    const videoId = ref(null)
+    const questionForm = reactive({
+      question: ''
+    })
+    const askButtonClicked = ref(false)
+    const userQuestion = ref('') // 新增的用户问题绑定变量
+    const chatHistory = ref([
+      { sender: 'user', message: '这是什么视频？' },
+      { sender: 'server', message: '这是关于Vue.js的视频教程。' },
+      { sender: 'user', message: '谢谢！' },
+      { sender: 'server', message: '不客气，有什么问题随时问我。' }
+    ]) // 存储聊天记录
 
     const videoData = reactive({
       interactionPosition: 'right',
@@ -115,6 +163,7 @@ export default {
 
     const checkTime = () => {
       const currentVideoTime = player.value.currentTime()
+      console.log(22, currentQuestionIndex.value, videoData.questions.length)
       if (currentQuestionIndex.value < videoData.questions.length) {
         const question = videoData.questions[currentQuestionIndex.value]
         const questionTime = convertToSeconds(question.time)
@@ -122,12 +171,6 @@ export default {
         if (Math.abs(currentVideoTime - questionTime) < 0.5) {
           console.log('pause')
           player.value.pause()
-
-          if (question.action === 'pause') {
-            askButtonVisible.value = false
-          } else if (question.action === 'button') {
-            askButtonVisible.value = true
-          }
 
           videoData.interactionPosition === 'overlay' && (dialogVisible.value = true)
 
@@ -169,11 +212,130 @@ export default {
       dialogVisible.value = false
     }
 
-    onMounted(() => {
+    const reportPlayOver = async () => {
+      if (videoId.value) {
+        try {
+          await request(
+            {
+              url: '/video/play/over',
+              method: 'POST',
+              data: {
+                video_id: videoId.value,
+                play_over: 1
+              }
+            },
+            true
+          )
+          console.log('Video play over reported successfully')
+        } catch (error) {
+          console.error('Failed to report video play over:', error)
+        }
+      }
+    }
+
+    const handleBeforeUnload = (event) => {
+      reportPlayOver()
+      // 触发浏览器默认行为
+      event.preventDefault()
+      event.returnValue = ''
+    }
+
+    const handlePause = () => {
+      if (player.value) {
+        player.value.pause()
+      }
+    }
+
+    const handleAsk = () => {
+      if (player.value) {
+        player.value.pause()
+      }
+      askButtonClicked.value = true
+    }
+
+    const sendQuestion = async () => {
+      const questionText = userQuestion.value
+      chatHistory.value.push({ sender: 'user', message: questionText })
+
+      const currentTime = player.value.currentTime()
+      const formattedTime = formatTime(currentTime)
+
+      //log chat
+      // try {
+      //   const response = await request(
+      //     {
+      //       url: '/video/log/create',
+      //       method: 'POST',
+      //       data: {
+      //         video_id: videoId.value,
+      //         question: questionText,
+      //         question_type: 1,
+      //         answer: '', // 假设这里先为空，实际需要从服务端获取
+      //         answer_choose: 1,
+      //         time: formattedTime
+      //       }
+      //     },
+      //     true
+      //   )
+
+      //   if (response.code === 200) {
+      //     chatHistory.value.push({ sender: 'server', message: response.data.answer })
+      //   }
+      // } catch (error) {
+      //   console.error('发送问题失败:', error)
+      // }
+
+      userQuestion.value = ''
+    }
+
+    onMounted(async () => {
+      const videoUrl = route.query.url
+      videoId.value = route.query.video_id
+      const assistantId = route.query.assistant_id
+
+      try {
+        const threadResponse = await request(
+          {
+            url: '/video/thread',
+            method: 'POST',
+            data: {
+              video_id: videoId.value,
+              assistant_id: assistantId
+            }
+          },
+          true
+        )
+
+        if (threadResponse.code === 200) {
+          const threadId = threadResponse.data.thread_id
+
+          const chatResponse = await request(
+            {
+              url: '/chat/list',
+              method: 'POST',
+              data: {
+                thread_id: threadId
+              }
+            },
+            true
+          )
+
+          if (chatResponse.code === 200) {
+            // videoData.questions = chatResponse.data.questions || []
+          } else {
+            console.error('Failed to fetch chat list:', chatResponse.message)
+          }
+        } else {
+          console.error('Failed to start video thread:', threadResponse.message)
+        }
+      } catch (error) {
+        console.error('Error fetching thread or chat list:', error)
+      }
+
       player.value = videojs(document.querySelector('.video-js'), {
         sources: [
           {
-            src: './example.mp4',
+            src: videoUrl,
             type: 'video/mp4'
           }
         ]
@@ -182,6 +344,13 @@ export default {
       player.value.on('timeupdate', () => {
         checkTime()
       })
+
+      window.addEventListener('beforeunload', handleBeforeUnload)
+    })
+
+    onBeforeUnmount(() => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      reportPlayOver()
     })
 
     return {
@@ -190,11 +359,17 @@ export default {
       currentQuestion,
       videoData,
       interactionVisible,
-      askButtonVisible,
       setInteractionPosition,
       questionComponent,
       closeDialog,
-      currentQuestionIndex
+      currentQuestionIndex,
+      handlePause,
+      handleAsk,
+      sendQuestion,
+      userQuestion,
+      questionForm,
+      askButtonClicked,
+      chatHistory
     }
   }
 }
@@ -225,8 +400,10 @@ export default {
   flex-direction: column;
   align-items: center;
   position: relative;
+
   .video-js {
     width: 100%;
+    height: 80vh;
     border-radius: 10px;
     overflow: hidden;
   }
@@ -273,6 +450,10 @@ export default {
   }
 }
 
+.control-button {
+  margin-bottom: 10px;
+}
+
 .question {
   margin-top: 10px;
   padding: 10px;
@@ -298,5 +479,45 @@ export default {
 
 .dialog-footer {
   margin-top: 10px;
+}
+
+.chat-input {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 20px;
+  gap: 10px;
+}
+
+.input-box {
+  flex: 1;
+}
+
+.user-chat-area {
+  margin-top: 20px;
+  max-height: 100%;
+  overflow-y: auto;
+  background-color: #f9f9f9;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid #ebeef5;
+}
+
+.chat-message {
+  margin-bottom: 10px;
+}
+
+.chat-user,
+.chat-server {
+  padding: 10px;
+  border-radius: 5px;
+}
+
+.chat-user {
+  background-color: #d9f7be;
+}
+
+.chat-server {
+  background-color: #e6f7ff;
 }
 </style>

@@ -58,7 +58,13 @@
 
             <!-- 语音回答 -->
             <div v-else-if="question.questionType === 'audio'">
-              <audio ref="audioPlayer" controls></audio>
+              <div style="margin-top: 10px">
+                <font-awesome-icon
+                  icon="volume-up"
+                  class="sound-icon"
+                  @click="playAudio(question.answerSrc)"
+                ></font-awesome-icon>
+              </div>
             </div>
 
             <!-- photo talk -->
@@ -83,9 +89,6 @@
       <div class="conversation">
         <div class="conversation-content">
           <div class="conversation-footer margin10">
-            <!-- <el-button v-if="!isSubmitAnswer" @click="handleSubmit">提交</el-button>
-          <el-button v-if="!answerVisible" @click="submitAnswer(question)">查看正确答案</el-button>
-          <el-button v-else @click="closeConversation">关闭</el-button> -->
             <el-button v-if="curState === 'question'" @click="handleSubmit" type="primary"
               >提交</el-button
             >
@@ -126,7 +129,7 @@
           </div>
 
           <!-- 回答 -->
-          <div v-if="curState === 'answer'">
+          <div>
             <!-- 文本回答 -->
             <div v-if="question.answerType === 'text'">
               <div class="question-text margin10">
@@ -136,8 +139,12 @@
 
             <!-- 语音回答 -->
             <div v-else-if="question.answerType === 'audio'">
-              <div>
-                <audio ref="audioPlayer" controls></audio>
+              <div style="margin-top: 10px">
+                <font-awesome-icon
+                  icon="volume-up"
+                  class="sound-icon"
+                  @click="playAudio(question.answerSrc)"
+                ></font-awesome-icon>
               </div>
             </div>
 
@@ -161,12 +168,18 @@
 import { ref, watch, nextTick } from 'vue'
 
 import WebSocketComponent from './WebSocketComponent.vue'
+import { library } from '@fortawesome/fontawesome-svg-core'
+import { faVolumeUp } from '@fortawesome/free-solid-svg-icons'
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
+
+library.add(faVolumeUp)
 
 const stateOrder = ['question', 'score', 'answer', 'close']
 
 export default {
   components: {
-    WebSocketComponent
+    WebSocketComponent,
+    FontAwesomeIcon
   },
   props: {
     interactionVisible: Boolean,
@@ -257,6 +270,17 @@ export default {
           }
         })
       }
+    }
+
+    const playAudio = (src) => {
+      fetch(src)
+        .then((response) => response.arrayBuffer())
+        .then((data) => {
+          audioParts.value.push(data)
+          if (!sourceBuffer.value.updating) {
+            sourceBuffer.value.appendBuffer(audioParts.value.shift())
+          }
+        })
     }
 
     const closeConversation = () => {
@@ -481,6 +505,24 @@ export default {
   video {
     width: 100%;
     height: 100%;
+  }
+}
+
+.sound-icon {
+  font-size: 24px;
+  cursor: pointer;
+  animation: sound-wave 1s infinite;
+}
+
+@keyframes sound-wave {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
   }
 }
 </style>

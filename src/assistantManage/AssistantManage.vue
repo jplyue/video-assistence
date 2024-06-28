@@ -15,7 +15,7 @@
             <el-table-column prop="title" label="助手标题" width="300"></el-table-column>
             <el-table-column label="操作" width="200">
               <template v-slot="scope">
-                <el-button @click="handleEdit(scope.row.id)" type="primary" size="small"
+                <el-button @click="handleEdit(scope.row)" type="primary" size="small"
                   >编辑</el-button
                 >
                 <el-button @click="removeAssistant(scope.row.id)" type="danger" size="small"
@@ -31,44 +31,60 @@
   </el-container>
 </template>
 
-<script>
-import { ref } from 'vue'
+<script lang="ts" setup>
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import Sidebar from '@/components/Sidebar.vue'
+import { request } from '@/request'
 
-export default {
-  components: {
-    Sidebar
-  },
-  setup() {
-    const router = useRouter()
-    const assistants = ref([
-      { id: 1, title: '助手 1' },
-      { id: 2, title: '助手 2' },
-      { id: 3, title: '助手 3' }
-      // 继续添加助手
-    ])
+const router = useRouter()
+const assistants = ref([])
 
-    const handleEdit = (id) => {
-      router.push(`/assistant/${id}`)
+// 获取助手列表
+const fetchAssistants = async () => {
+  try {
+    const response = await request(
+      {
+        url: '/program/list',
+        method: 'POST',
+        data: {
+          page: 1,
+          page_size: 10
+        }
+      },
+      true
+    )
+    if (response.code === 200) {
+      assistants.value = response.data.list
+    } else {
+      console.error('获取助手列表失败', response.message)
     }
-
-    const removeAssistant = (id) => {
-      assistants.value = assistants.value.filter((assistant) => assistant.id !== id)
-    }
-
-    const createAssistant = () => {
-      router.push(`/create`)
-    }
-
-    return {
-      assistants,
-      handleEdit,
-      removeAssistant,
-      createAssistant
-    }
+  } catch (error) {
+    console.error('获取助手列表失败', error)
   }
 }
+
+const handleEdit = (assistant) => {
+  router.push({
+    path: `/assistant/${assistant.id}`,
+    query: {
+      assistant_id: assistant.assistant_id,
+      store_id: assistant.store_id
+    }
+  })
+}
+
+const removeAssistant = (id: number) => {
+  assistants.value = assistants.value.filter((assistant) => assistant.id !== id)
+}
+
+const createAssistant = () => {
+  router.push(`/create`)
+}
+
+onMounted(() => {
+  fetchAssistants()
+})
 </script>
 
 <style scoped>

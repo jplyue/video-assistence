@@ -29,9 +29,11 @@
 </template>
 
 <script>
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessageBox } from 'element-plus'
 import Sidebar from '@/components/Sidebar.vue'
+import { request } from '@/request'
 
 export default {
   components: {
@@ -50,8 +52,7 @@ export default {
         if (valid) {
           // 提交表单数据，进行相应的操作，如保存数据
           console.log('提交的数据: ', form.value)
-          // 保存完成后跳转到其他页面，如助手列表页面
-          router.push('/')
+          fetchCreate(form.value)
         } else {
           console.log('表单验证失败')
           return false
@@ -64,13 +65,43 @@ export default {
       form.value.remark = ''
     }
 
+    // 获取助手列表
+    const fetchCreate = async (params) => {
+      try {
+        const response = await request(
+          {
+            url: '/program/create',
+            method: 'POST',
+            data: {
+              title: params.name,
+              instruction: params.remark
+            }
+          },
+          true
+        )
+        if (response.code === 200) {
+          ElMessageBox.alert('创建助手成功', '成功', {
+            confirmButtonText: '确定',
+            type: 'success'
+          }).then(() => {
+            router.push('/assistant/' + response.data.id)
+          })
+        } else {
+          console.error('创建助手失败', response.message)
+        }
+      } catch (error) {
+        console.error('创建助手失败', error)
+      }
+    }
+
     return {
       form,
       formRef,
       handleSubmit,
       handleReset
     }
-  }
+  },
+  onMounted() {}
 }
 </script>
 

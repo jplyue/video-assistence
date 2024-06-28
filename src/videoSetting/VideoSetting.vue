@@ -90,7 +90,6 @@
         </el-table>
         <div class="buttons" style="margin-top: 20px">
           <el-button type="primary" @click="handleAdd">增加</el-button>
-          <el-button type="success" @click="handleSubmit">提交</el-button>
         </div>
       </el-form-item>
 
@@ -98,6 +97,14 @@
       <el-form-item label="设置分享">
         <el-checkbox v-model="shareSetting">启用分享</el-checkbox>
         <el-checkbox v-model="loginRequired">观看视频是否需要登录</el-checkbox>
+      </el-form-item>
+
+      <el-form-item label="">
+        <div class="submit-buttons" style="margin-top: 20px">
+          <el-button type="success" :loading="loading" @click="handleSubmit"
+            >提交保存设置</el-button
+          >
+        </div>
       </el-form-item>
     </el-form>
 
@@ -116,6 +123,8 @@ import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import 'video.js/dist/video-js.css'
 import { ElMessage } from 'element-plus'
 import { CopyDocument, Delete } from '@element-plus/icons-vue'
+import { useRouter, useRoute } from 'vue-router'
+import { request } from '@/request'
 
 export default {
   components: {
@@ -123,12 +132,15 @@ export default {
     Delete
   },
   setup() {
+    const router = useRouter()
+    const route = useRoute()
     const player = ref(null)
     const videoPlayer = ref(null)
     const interactionPosition = ref('top')
     const shareSetting = ref(false)
     const loginRequired = ref(false)
     const showAskButton = ref(false)
+    const loading = ref(false)
     const questions = ref(
       Array.from({ length: 5 }, (_, index) => ({
         index: index + 1,
@@ -216,23 +228,42 @@ export default {
       })
     }
 
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
+      loading.value = true
       const tableData = questions.value.map((question) => ({
-        index: question.index,
         question: question.question,
+        question_type: question.questionType === 'text' ? 2 : 1,
         answer: question.answer,
-        time: question.time,
-        questionType: question.questionType,
-        answerType: question.answerType,
-        action: question.action
+        answer_type: question.answerTypes.includes('text') ? 2 : 1,
+        time: question.time
       }))
       const formData = {
-        interactionPosition: interactionPosition.value,
-        shareSetting: shareSetting.value,
-        loginRequired: loginRequired.value,
-        questions: tableData
+        video_id: route.query.video_id, // 从路由中获取视频ID
+        questions: tableData,
+        answer_choose: showAskButton.value ? 1 : 0,
+        share_login: shareSetting.value ? 1 : 0
       }
-      console.log('提交的数据:', formData)
+      try {
+        const response = await request(
+          {
+            url: '/video/question',
+            method: 'POST',
+            data: formData
+          },
+          true
+        )
+
+        if (response.code === 200) {
+          ElMessage.success('提交成功')
+        } else {
+          ElMessage.error('提交失败')
+        }
+      } catch (error) {
+        ElMessage.error('提交失败')
+        console.error(error)
+      } finally {
+        loading.value = false
+      }
     }
 
     const showQuestionPopover = (index) => {
@@ -286,7 +317,8 @@ export default {
       pauseVideo,
       addQuestion,
       popoverAction,
-      showAskButton
+      showAskButton,
+      loading
     }
   }
 }

@@ -8,29 +8,66 @@
         </template>
       </el-menu-item>
       <el-menu-item-group title="助手列表">
-        <el-menu-item index="2-1" @click="navigateTo('/assistant/1')">助手 1</el-menu-item>
-        <el-menu-item index="2-2" @click="navigateTo('/assistant/2')">助手 2</el-menu-item>
-        <el-menu-item index="2-3" @click="navigateTo('/assistant/3')">助手 3</el-menu-item>
+        <el-menu-item
+          v-for="assistant in assistants"
+          :key="assistant.id"
+          :index="`assistant-${assistant.id}`"
+          @click="
+            navigateTo(`/assistant/${assistant.id}`, assistant.assistant_id, assistant.store_id)
+          "
+        >
+          {{ assistant.title }}
+        </el-menu-item>
       </el-menu-item-group>
     </el-menu>
   </el-aside>
 </template>
 
 <script>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { request } from '@/request'
 
 export default {
   setup() {
     const router = useRouter()
     const activeIndex = ref('1')
+    const assistants = ref([])
 
-    const navigateTo = (path) => {
-      router.push(path)
+    const fetchAssistants = async () => {
+      try {
+        const response = await request(
+          {
+            url: '/program/list',
+            method: 'POST',
+            data: {
+              page: 1,
+              page_size: 10
+            }
+          },
+          true
+        )
+        if (response.code === 200) {
+          assistants.value = response.data.list
+        } else {
+          console.error('获取助手列表失败', response.message)
+        }
+      } catch (error) {
+        console.error('获取助手列表失败', error)
+      }
     }
+
+    const navigateTo = (path, assistantId, storeId) => {
+      router.push({ path, query: { assistant_id: assistantId, store_id: storeId } })
+    }
+
+    onMounted(() => {
+      fetchAssistants()
+    })
 
     return {
       activeIndex,
+      assistants,
       navigateTo
     }
   }
