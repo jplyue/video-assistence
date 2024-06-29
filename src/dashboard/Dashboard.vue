@@ -7,7 +7,10 @@
     <el-container>
       <el-header class="header">
         <h2 class="title">Dashboard</h2>
-        <el-button type="primary" @click="navigateToAssistantManagement">管理助手</el-button>
+        <div class="header-buttons">
+          <el-button type="primary" @click="navigateToAssistantManagement">管理助手</el-button>
+          <el-button type="danger" @click="logout">登出</el-button>
+        </div>
       </el-header>
       <el-main class="main">
         <el-row :gutter="20">
@@ -45,6 +48,7 @@ import { useRouter } from 'vue-router'
 import { ElContainer, ElHeader, ElMain, ElRow, ElCol, ElButton } from 'element-plus'
 import Sidebar from '@/components/Sidebar.vue'
 import Chart from 'chart.js/auto'
+import { getTokenFromCookie, removeTokenFromCookie } from '@/request'
 
 export default defineComponent({
   name: 'Dashboard',
@@ -60,11 +64,25 @@ export default defineComponent({
   setup() {
     const router = useRouter()
 
+    const checkToken = () => {
+      const token = getTokenFromCookie()
+      if (!token.length) {
+        logout()
+      }
+    }
+
+    const logout = () => {
+      removeTokenFromCookie()
+      router.push('/login')
+    }
+
     const navigateToAssistantManagement = () => {
       router.push('/manage')
     }
 
     onMounted(() => {
+      checkToken()
+
       const createChart = (id, type, data, options) => {
         const ctx = document.getElementById(id).getContext('2d')
         new Chart(ctx, {
@@ -106,7 +124,8 @@ export default defineComponent({
     })
 
     return {
-      navigateToAssistantManagement
+      navigateToAssistantManagement,
+      logout
     }
   }
 })
@@ -127,6 +146,11 @@ export default defineComponent({
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.header-buttons {
+  display: flex;
+  gap: 10px;
 }
 
 .main {
