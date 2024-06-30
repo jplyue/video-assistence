@@ -27,7 +27,7 @@ instance.interceptors.response.use(
 )
 
 // 获取 token 的函数
-const getTokenFromCookie = () => {
+export const getTokenFromCookie = () => {
   const name = 'token='
   const decodedCookie = decodeURIComponent(document.cookie)
   const ca = decodedCookie.split(';')
@@ -50,6 +50,14 @@ export const saveTokenInCookie = (token: string) => {
   console.log('Token saved:', document.cookie) // 确认 token 已成功存储
 }
 
+// 删除 token 的函数
+export const removeTokenFromCookie = () => {
+  const now = new Date()
+  now.setTime(now.getTime() - 1) // 将有效期设置为过去的时间
+  document.cookie = `token=;expires=${now.toUTCString()};path=/`
+  console.log('Token removed:', document.cookie) // 确认 token 已成功删除
+}
+
 // 定义请求函数的类型
 export const request = (options: AxiosRequestConfig, addToken: boolean = false) => {
   const token = getTokenFromCookie()
@@ -62,4 +70,13 @@ export const request = (options: AxiosRequestConfig, addToken: boolean = false) 
   }
 
   return instance(options)
+}
+
+export const saveUserInfo = (data: Object) => {
+  localStorage.setItem('user', JSON.stringify(data))
+}
+
+export const getUserInfo = () => {
+  const userData = localStorage.getItem('user')
+  return userData ? JSON.parse(userData) : null
 }

@@ -21,20 +21,24 @@
               </el-form-item>
               <el-form-item label="上传视频">
                 <el-upload
-                  ref="upload"
+                  ref="videoUpload"
                   class="upload"
                   action="/video/upload"
                   accept="video/mp4,video/quicktime"
                   :before-upload="beforeUploadVideo"
-                  :on-success="handleUploadSuccess"
+                  :on-success="handleVideoUploadSuccess"
+                  :on-error="handleVideoUploadError"
                   :limit="1"
                   :on-exceed="handleExceed"
+                  :disabled="videoUploading"
                 >
                   <template #trigger>
-                    <el-button type="primary">选择文件</el-button>
+                    <el-button type="primary" :disabled="videoUploading">选择文件</el-button>
                   </template>
                   <template #tip>
-                    <div class="el-upload__tip">限制 1 个文件，新文件将覆盖旧文件</div>
+                    <div class="el-upload__tip">
+                      {{ videoUploadStatus }}
+                    </div>
                   </template>
                 </el-upload>
               </el-form-item>
@@ -76,20 +80,24 @@
               </el-form-item>
               <el-form-item label="上传文件">
                 <el-upload
-                  ref="upload"
+                  ref="knowledgeUpload"
                   class="upload"
                   action="/file/create"
                   accept=".txt,.pdf"
                   :before-upload="beforeUploadKnowledge"
-                  :on-success="handleUploadSuccess"
+                  :on-success="handleKnowledgeUploadSuccess"
+                  :on-error="handleKnowledgeUploadError"
                   :limit="1"
                   :on-exceed="handleExceed"
+                  :disabled="knowledgeUploading"
                 >
                   <template #trigger>
-                    <el-button type="primary">选择文件</el-button>
+                    <el-button type="primary" :disabled="knowledgeUploading">选择文件</el-button>
                   </template>
                   <template #tip>
-                    <div class="el-upload__tip">限制 1 个文件，新文件将覆盖旧文件</div>
+                    <div class="el-upload__tip">
+                      {{ knowledgeUploadStatus }}
+                    </div>
                   </template>
                 </el-upload>
               </el-form-item>
@@ -121,7 +129,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import AssistantSidebar from './AssistantSidebar.vue'
@@ -143,6 +151,14 @@ const knowledgeForm = ref({
 const videoList = ref([])
 const knowledgeList = ref([])
 
+const videoUploading = ref(false) // 视频上传状态
+const videoUploadStatus = ref('') // 视频上传状态信息
+
+const knowledgeUploading = ref(false) // 知识上传状态
+const knowledgeUploadStatus = ref('') // 知识上传状态信息
+
+const interactionPosition = ref('') //交互区
+
 const fetchDetails = async () => {
   const assistantId = route.query.assistant_id
   try {
@@ -157,9 +173,8 @@ const fetchDetails = async () => {
     if (response.code === 200) {
       videoList.value =
         response.data.video_info.map((item, index) => ({ ...item, index: index + 1 })) || []
-      knowledgeList.value = response.data.file_info
-        ? [{ ...response.data.file_info, index: 1 }]
-        : []
+      knowledgeList.value =
+        response.data.file_info.map((item, index) => ({ ...item, index: index + 1 })) || []
     } else {
       ElMessage.error('获取详情失败')
     }
@@ -170,26 +185,49 @@ const fetchDetails = async () => {
 }
 
 const formatDate = (dateString) => {
-  return dateString.replace('T', ' ')
+  if (dateString && dateString.length) {
+    return dateString.replace('T', ' ')
+  } else {
+    return ''
+  }
 }
 
-const handleUploadSuccess = (response, file, fileList) => {
-  ElMessage.success('上传成功')
+const handleVideoUploadSuccess = (response, file, fileList) => {
+  videoUploading.value = false
+  videoUploadStatus.value = '上传成功'
   console.log('response:', response)
   console.log('file:', file)
   console.log('fileList:', fileList)
   fetchDetails()
 }
 
-const handlePreview = (file) => {
-  console.log('preview:', file)
+const handleVideoUploadError = (error, file, fileList) => {
+  videoUploading.value = false
+  videoUploadStatus.value = '上传失败'
+  ElMessage.error('视频上传失败')
+  console.error('Upload error:', error)
 }
 
-const handleRemove = (file, fileList) => {
-  console.log('remove:', file, fileList)
+const handleKnowledgeUploadSuccess = (response, file, fileList) => {
+  knowledgeUploading.value = false
+  knowledgeUploadStatus.value = '上传成功'
+  console.log('response:', response)
+  console.log('file:', file)
+  console.log('fileList:', fileList)
+  fetchDetails()
+}
+
+const handleKnowledgeUploadError = (error, file, fileList) => {
+  knowledgeUploading.value = false
+  knowledgeUploadStatus.value = '上传失败'
+  ElMessage.error('知识文件上传失败')
+  console.error('Upload error:', error)
 }
 
 const beforeUploadKnowledge = async (file) => {
+  knowledgeUploading.value = true
+  knowledgeUploadStatus.value = '上传中...'
+
   console.log('Before upload file:', file)
 
   const formData = new FormData()
@@ -213,20 +251,21 @@ const beforeUploadKnowledge = async (file) => {
     )
 
     if (response.code === 200) {
-      ElMessage.success('文件上传成功')
-      handleUploadSuccess(response, file, [])
+      handleKnowledgeUploadSuccess(response, file, [])
     } else {
-      ElMessage.error('文件上传失败')
+      handleKnowledgeUploadError(response, file, [])
     }
   } catch (error) {
-    ElMessage.error('文件上传失败')
-    console.error(error)
+    handleKnowledgeUploadError(error, file, [])
   }
 
   return false
 }
 
 const beforeUploadVideo = async (file) => {
+  videoUploading.value = true
+  videoUploadStatus.value = '上传中...'
+
   console.log('Before upload file:', file)
 
   const formData = new FormData()
@@ -253,13 +292,12 @@ const beforeUploadVideo = async (file) => {
     )
 
     if (response.code === 200) {
-      handleUploadSuccess(response, file, [])
+      handleVideoUploadSuccess(response, file, [])
     } else {
-      ElMessage.error('文件上传失败')
+      handleVideoUploadError(response, file, [])
     }
   } catch (error) {
-    ElMessage.error('文件上传失败')
-    console.error(error)
+    handleVideoUploadError(error, file, [])
   }
 
   return false
@@ -349,7 +387,12 @@ const settings = (row) => {
   router
     .push({
       path: '/video-setting',
-      query: { video_id: row.id, assistant_id: row.assistant_id, store_id: row.store_id }
+      query: {
+        video_id: row.id,
+        assistant_id: row.assistant_id,
+        store_id: row.store_id,
+        video_url: row.video_data
+      }
     })
     .catch((err) => console.error(err))
 }
@@ -360,6 +403,10 @@ const copyLink = (row) => {
 }
 
 onMounted(() => {
+  fetchDetails()
+})
+
+watch(route, () => {
   fetchDetails()
 })
 </script>

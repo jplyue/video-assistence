@@ -5,97 +5,129 @@
       @audioPartReady="handleAudioPartReady"
       @audioComplete="handleAudioComplete"
     />
-    <!-- 浮层样式 -->
-    <div>
-      <el-dialog v-model="dialogVisibleLocal" width="500" :show-close="false">
-        <template #header="{ closeDialog, titleId, titleClass }">
-          <div class="my-header">
-            <h4 :id="titleId" :class="titleClass">
-              {{ curState === 'question' ? '回答问题' : '正确答案' }}
-            </h4>
-            <el-button type="default" @click="closeDialog"> 关闭 </el-button>
-          </div>
-        </template>
-        <div>
-          <div v-if="curState === 'question'">
-            <!-- 文本提问 -->
-            <div v-if="question.questionType === 'text'">
-              <div class="margin10">
-                <p class="dialog-question">{{ question.question }}</p>
-              </div>
-              <el-input v-model="userAnswer" :rows="3" type="textarea" placeholder="请输入答案" />
-            </div>
-
-            <!-- 语音提问 -->
-            <div v-else-if="question.questionType === 'audio'">
-              <div class="recording-wrapper">
-                <div><p>请录制您的回答:</p></div>
-                <div>
-                  <el-button @click="startRecording">开始录音</el-button>
-                  <el-button @click="stopRecording" :disabled="!isRecording">停止录音</el-button>
-                </div>
-                <div>
-                  <audio v-if="answerUrl" :src="answerUrl" controls></audio>
-                </div>
-              </div>
-            </div>
-
-            <!-- photo talk -->
-          </div>
-          <div v-if="curState === 'score'">
-            <!-- score -->
+    <el-dialog v-model="dialogVisibleLocal" width="500" :show-close="false">
+      <template #header="{ titleId, titleClass }">
+        <div class="my-header">
+          <h4 :id="titleId" :class="titleClass">
+            {{ curState === 'question' ? '回答问题' : '正确答案' }}
+          </h4>
+          <el-button type="default" @click="closeDialog"> 关闭 </el-button>
+        </div>
+      </template>
+      <div>
+        <div v-if="curState === 'question'">
+          <!-- 文本提问 -->
+          <div v-if="question.questionType === 'text'">
             <div class="margin10">
-              <p>您的分数78分</p>
+              <p class="dialog-question">{{ question.question }}</p>
             </div>
+            <el-input v-model="userAnswer" :rows="3" type="textarea" placeholder="请输入答案" />
           </div>
-          <div v-if="curState === 'answer'">
-            <!-- 文本回答 -->
-            <div v-if="question.questionType === 'text'">
-              <div class="margin10">
-                <p class="dialog-answer">{{ displayedText }}</p>
+
+          <!-- 语音提问 -->
+          <div v-else-if="question.questionType === 'audio'">
+            <div class="recording-wrapper">
+              <div><p>请录制您的回答:(按住录音，松开结束)</p></div>
+              <div>
+                <button
+                  @mousedown="startRecording"
+                  @mouseup="stopRecording"
+                  @touchstart="startRecording"
+                  @touchend="stopRecording"
+                  class="record-button"
+                ></button>
+              </div>
+              <div>
+                <audio v-if="questionAudioUrl" :src="questionAudioUrl" controls></audio>
+              </div>
+              <div class="transcript">
+                <p>{{ finalTranscript }}</p>
               </div>
             </div>
-
-            <!-- 语音回答 -->
-            <div v-else-if="question.questionType === 'audio'">
-              <audio ref="audioPlayer" controls></audio>
-            </div>
-
-            <!-- photo talk -->
           </div>
         </div>
-        <template #footer>
-          <div class="dialog-footer">
-            <el-button v-if="curState === 'question'" @click="handleSubmit" type="primary"
-              >提交</el-button
-            >
-            <el-button v-if="curState === 'score'" @click="handleSubmit" type="primary"
-              >查看正确答案</el-button
-            >
-            <el-button @click="closeDialog">关闭</el-button>
-          </div>
-        </template>
-      </el-dialog>
-    </div>
 
-    <div v-if="interactionVisible && !dialogVisibleLocal">
-      <!--其他样式 -->
-      <div class="conversation">
-        <div class="conversation-content">
-          <div class="conversation-footer margin10">
-            <!-- <el-button v-if="!isSubmitAnswer" @click="handleSubmit">提交</el-button>
-          <el-button v-if="!answerVisible" @click="submitAnswer(question)">查看正确答案</el-button>
-          <el-button v-else @click="closeConversation">关闭</el-button> -->
-            <el-button v-if="curState === 'question'" @click="handleSubmit" type="primary"
-              >提交</el-button
-            >
-            <el-button v-if="curState === 'score'" @click="handleSubmit" type="primary"
-              >查看正确答案</el-button
-            >
-            <el-button v-if="curState !== 'close'" @click="closeConversation">关闭</el-button>
+        <!-- 分数 -->
+        <div v-if="curState === 'score'">
+          <div class="margin10">
+            <p>您的分数{{ answerScore }}分</p>
+            <p v-if="evaluation">{{ evaluation }}</p>
           </div>
+        </div>
+
+        <div v-if="curState === 'answer'">
+          <!-- 文本回答 -->
+          <div v-if="question.answerType === 'text'">
+            <div class="margin10">
+              <p class="dialog-answer">{{ displayedText }}</p>
+            </div>
+          </div>
+
+          <!-- 语音回答 -->
+          <div v-else-if="question.answerType === 'audio' || question.answerType === 'phototalk'">
+            <div
+              v-if="question.answerType === 'audio'"
+              @click="toggleAudio"
+              :class="[
+                'audio-icon',
+                { 'audio-icon-active': isAnswerUrlLoaded, loading: !isAnswerUrlLoaded }
+              ]"
+            >
+              <font-awesome-icon icon="volume-up" class="sound-icon"></font-awesome-icon>
+            </div>
+            <audio
+              ref="audioPlayer"
+              :src="answerAudioUrl"
+              style="display: none"
+              @loadeddata="onAudioLoaded"
+            ></audio>
+            <div v-if="question.answerType === 'phototalk'" class="phototalk-wrapper margin10">
+              <video autoplay muted loop src="/talking2.mp4"></video>
+              <div class="transcript">
+                <p>{{ finalTranscript }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button
+            v-if="curState === 'question'"
+            :loading="isSubmitting"
+            @click="handleSubmit"
+            type="primary"
+          >
+            提交
+          </el-button>
+          <el-button v-if="curState === 'score'" @click="handleSubmit" type="primary"
+            >查看正确答案</el-button
+          >
+          <el-button @click="closeDialog">关闭</el-button>
+        </div>
+      </template>
+    </el-dialog>
+
+    <div v-if="interactionVisible && !dialogVisible">
+      <div class="conversation">
+        <div class="conversation-footer margin10">
+          <el-button
+            v-if="curState === 'question'"
+            :loading="isSubmitting"
+            @click="handleSubmit"
+            type="primary"
+          >
+            提交
+          </el-button>
+          <el-button v-if="curState === 'score'" @click="handleSubmit" type="primary"
+            >查看正确答案</el-button
+          >
+          <el-button v-if="curState !== 'close'" @click="closeConversation">关闭</el-button>
+        </div>
+        <div class="conversation-content">
           <div v-if="curState === 'question'">
-            <!-- 文本提问 -->
+            <!-- 文字提问 -->
             <div v-if="question.questionType === 'text'">
               <div class="question-text margin10">
                 <p class="dialog-question">{{ question.question }}</p>
@@ -108,26 +140,31 @@
               <div class="recording-wrapper">
                 <div><p>请录制您的问题:</p></div>
                 <div>
-                  <el-button @click="startRecording">开始录音</el-button>
-                  <el-button @click="stopRecording" :disabled="!isRecording">停止录音</el-button>
+                  <button
+                    @mousedown="startRecording"
+                    @mouseup="stopRecording"
+                    @touchstart="startRecording"
+                    @touchend="stopRecording"
+                    class="record-button"
+                  ></button>
                 </div>
                 <div>
-                  <audio v-if="answerUrl" :src="answerUrl" controls></audio>
+                  <audio v-if="questionAudioUrl" :src="questionAudioUrl" controls></audio>
+                </div>
+                <div class="transcript">
+                  <p>{{ finalTranscript }}</p>
                 </div>
               </div>
             </div>
           </div>
-
-          <!-- score -->
           <div v-if="curState === 'score'">
             <div class="margin10">
-              <p>您的分数78分</p>
+              <p>您的分数{{ answerScore }} 分</p>
+              <p v-if="evaluation">{{ evaluation }}</p>
             </div>
           </div>
-
-          <!-- 回答 -->
           <div v-if="curState === 'answer'">
-            <!-- 文本回答 -->
+            <!-- 文字回答 -->
             <div v-if="question.answerType === 'text'">
               <div class="question-text margin10">
                 <p class="dialog-answer">{{ displayedText }}</p>
@@ -135,95 +172,141 @@
             </div>
 
             <!-- 语音回答 -->
-            <div v-else-if="question.answerType === 'audio'">
-              <div>
-                <audio ref="audioPlayer" controls></audio>
+            <div v-else-if="question.answerType === 'audio' || question.answerType === 'phototalk'">
+              <div
+                v-if="question.answerType === 'audio'"
+                @click="toggleAudio"
+                :class="[
+                  'audio-icon',
+                  { 'audio-icon-active': isAnswerUrlLoaded, loading: !isAnswerUrlLoaded }
+                ]"
+              >
+                <font-awesome-icon icon="volume-up" class="sound-icon"></font-awesome-icon>
               </div>
-            </div>
-
-            <!-- Phototalk回答 -->
-            <div v-if="question.answerType === 'phototalk'">
-              <div class="phototalk-wrapper margin10">
-                <video
-                  autoplay
-                  src="https://storage.googleapis.com/yepic-generated-videos/4d001c40-9c71-4b2a-87c6-21a393b2d22f/downloads/avatar/dffaf892-1d78-f228-6c07-c148239fb54f/4d001c40-9c71-4b2a-87c6-21a393b2d22f.mp4"
-                ></video>
+              <audio
+                ref="audioPlayer"
+                :src="answerAudioUrl"
+                style="display: none"
+                @loadeddata="onAudioLoaded"
+              ></audio>
+              <div v-if="question.answerType === 'phototalk'" class="phototalk-wrapper margin10">
+                <video autoplay muted loop src="/talking2.mp4"></video>
               </div>
             </div>
           </div>
         </div>
       </div>
     </div>
+    <audio ref="backgroundAudio" src="/letmethink.mp3" style="display: none"></audio>
   </div>
 </template>
 
 <script>
-import { ref, watch, nextTick } from 'vue'
-
+import { ref, watch } from 'vue'
 import WebSocketComponent from './WebSocketComponent.vue'
+import { library } from '@fortawesome/fontawesome-svg-core'
+import { faVolumeUp } from '@fortawesome/free-solid-svg-icons'
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
+import { request } from '@/request'
+import { ElMessage } from 'element-plus'
+
+library.add(faVolumeUp)
 
 const stateOrder = ['question', 'score', 'answer', 'close']
 
 export default {
   components: {
-    WebSocketComponent
+    WebSocketComponent,
+    FontAwesomeIcon
   },
   props: {
     interactionVisible: Boolean,
     question: Object,
-    dialogVisible: Boolean
+    dialogVisible: Boolean,
+    interactionPosition: String,
+    videoId: String
   },
   setup(props, { emit }) {
     const userAnswer = ref('')
     const displayedText = ref('')
+    const interimTranscript = ref('')
+    const finalTranscript = ref('')
     const isRecording = ref(false)
-    const answerUrl = ref('')
+    const questionAudioUrl = ref('')
+    const answerAudioUrl = ref('')
+    const isAnswerUrlLoaded = ref(false)
+    const dialogVisibleLocal = ref(props.dialogVisible)
+    const curState = ref('close')
     const audioBlob = ref(null)
     const mediaRecorder = ref(null)
+    const recognition = ref(null)
     const interruptFlag = ref(false)
-    const dialogVisibleLocal = ref(props.dialogVisible)
-
-    const isSubmitAnswer = ref(false) //是否已经提交答案
-    const answerVisible = ref(false)
-    const askButtonMode = ref(false)
     const wsComponent = ref(null)
     const audioPlayer = ref(null)
+    const backgroundAudio = ref(null)
     const mediaSource = ref(null)
     const sourceBuffer = ref(null)
     const audioParts = ref([])
+    let backgroundAudioInterval = null
     let isUpdateEndListenerAdded = false
 
+    const isSubmitAnswer = ref(false)
+    const answerVisible = ref(false)
+    const askButtonMode = ref(false)
     const scoreVisible = ref(false)
-    const curState = ref('close') //
+    const evaluation = ref('')
+    const answerScore = ref('')
+    const isSubmitting = ref(false)
 
     watch([() => props.question, () => props.dialogVisible], ([newQuestion, newDialogVisible]) => {
-      // if (newQuestion && newQuestion.answerType === 'audio') {
-      //   wsComponent.value.resetWebSocket()
-      // }
       if (newQuestion) {
-        console.log('here is new question, reset state to', stateOrder[0])
         curState.value = stateOrder[0]
       }
       if (newDialogVisible) {
         dialogVisibleLocal.value = newDialogVisible
         if (newDialogVisible) {
-          console.log('reset to ', stateOrder[0])
           curState.value = stateOrder[0]
         }
       }
     })
 
+    const updateUserAnswer = (value) => {
+      userAnswer.value = value
+    }
+
+    const closeDialog = () => {
+      if (audioPlayer.value) {
+        audioPlayer.value.pause()
+        audioPlayer.value.currentTime = 0
+      }
+      stopBackgroundAudio()
+      dialogVisibleLocal.value = false
+      emit('closeDialog')
+      resetState()
+    }
+
+    const closeConversation = () => {
+      interruptFlag.value = true
+      resetState()
+      resetAudioState()
+      stopBackgroundAudio()
+      curState.value = 'close'
+    }
+
     const resetState = () => {
       userAnswer.value = ''
       displayedText.value = ''
+      interimTranscript.value = ''
+      finalTranscript.value = ''
       isRecording.value = false
-      answerUrl.value = ''
+      questionAudioUrl.value = ''
+      answerAudioUrl.value = ''
+      isAnswerUrlLoaded.value = false
       answerVisible.value = false
       askButtonMode.value = false
     }
 
     const resetAudioState = () => {
-      // 重置音频流
       if (sourceBuffer.value) {
         try {
           sourceBuffer.value.abort()
@@ -259,70 +342,6 @@ export default {
       }
     }
 
-    const closeConversation = () => {
-      interruptFlag.value = true
-      resetState()
-      resetAudioState()
-      curState.value = 'close'
-    }
-
-    // 对话框状态显示判断机
-    const interactionDisplayState = (curState) => {
-      const nextIndex = stateOrder.indexOf(curState.value) + 1
-      curState.value = stateOrder[nextIndex % stateOrder.length]
-    }
-
-    const closeDialog = () => {
-      dialogVisibleLocal.value = false
-      emit('closeDialog')
-      closeConversation()
-    }
-
-    const displayText = async (text) => {
-      displayedText.value = ''
-      interruptFlag.value = false
-
-      if (!text) return
-
-      for (let i = 0; i < text.length; i++) {
-        if (interruptFlag.value) break
-        await new Promise((resolve) => setTimeout(resolve, 50))
-        displayedText.value += text[i]
-      }
-    }
-
-    const startRecording = () => {
-      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        navigator.mediaDevices
-          .getUserMedia({ audio: true })
-          .then((stream) => {
-            mediaRecorder.value = new MediaRecorder(stream)
-            mediaRecorder.value.start()
-            isRecording.value = true
-            const audioChunks = []
-            mediaRecorder.value.ondataavailable = (event) => {
-              audioChunks.push(event.data)
-            }
-            mediaRecorder.value.onstop = () => {
-              audioBlob.value = new Blob(audioChunks, { type: 'audio/wav' })
-              answerUrl.value = URL.createObjectURL(audioBlob.value)
-              isRecording.value = false
-            }
-          })
-          .catch((error) => {
-            console.error('Error accessing media devices.', error)
-          })
-      } else {
-        console.error('Media devices are not supported.')
-      }
-    }
-
-    const stopRecording = () => {
-      if (mediaRecorder.value) {
-        mediaRecorder.value.stop()
-      }
-    }
-
     const handleAudioPartReady = (payload) => {
       console.log('Received audio part:', payload)
       audioParts.value.push(payload)
@@ -338,7 +357,7 @@ export default {
         initMediaSource()
       }
 
-      if (mediaSource.value.readyState === 'open') {
+      if (mediaSource.value && mediaSource.value.readyState === 'open') {
         const checkAndEndStream = () => {
           console.log('Checking and ending stream')
           if (!sourceBuffer.value.updating) {
@@ -370,32 +389,89 @@ export default {
       }
     }
 
+    const startBackgroundAudio = () => {
+      if (backgroundAudio.value) {
+        backgroundAudio.value.loop = false
+        backgroundAudio.value.play()
+        backgroundAudioInterval = setInterval(() => {
+          if (backgroundAudio.value.paused) {
+            backgroundAudio.value.play()
+          }
+        }, 5000)
+      }
+    }
+
+    const stopBackgroundAudio = () => {
+      if (backgroundAudio.value) {
+        backgroundAudio.value.pause()
+        backgroundAudio.value.currentTime = 0
+      }
+      if (backgroundAudioInterval) {
+        clearInterval(backgroundAudioInterval)
+        backgroundAudioInterval = null
+      }
+    }
+
     const handleSubmitAnswer = () => {
       isSubmitAnswer.value = true
       scoreVisible.value = true
       interactionDisplayState(curState)
     }
 
-    const handleSubmit = () => {
-      interactionDisplayState(curState)
+    const handleSubmit = async () => {
+      isSubmitting.value = true // 设置提交状态为 true
 
-      if (curState.value === 'answer') {
-        if (props.question.answerType === 'text') {
-          displayText(props.question.answer)
-        } else if (props.question.answerType === 'audio') {
-          displayAudio(props.question.answer)
+      // 提交回答的内容
+      if (curState.value === 'question') {
+        try {
+          const response = await request(
+            {
+              url: '/question/answer',
+              method: 'POST',
+              data: {
+                video_id: props.videoId,
+                question: props.question.question,
+                answer: props.question.answer,
+                user_answer: userAnswer.value,
+                time: props.question.time
+              }
+            },
+            true
+          )
+          const { score, comment } = response.data
+          evaluation.value = comment
+          answerScore.value = score
+          console.log('Submit answer successfully', response)
+
+          // 进入下个状态
+          interactionDisplayState(curState)
+        } catch (error) {
+          console.error('Failed to /question/answer:', error)
+          ElMessage({
+            message: '提交失败，请重试',
+            type: 'error'
+          })
+        } finally {
+          isSubmitting.value = false // 无论成功还是失败，都将提交状态设置为 false
         }
-      }
-    }
+      } else {
+        // 进入下个状态
+        interactionDisplayState(curState)
 
-    const handleShowAnswer = () => {
-      if (question.answerType === 'text') {
-        displayText(question.answer)
-      } else if (question.answerType === 'audio') {
-        displayAudio(question.answer)
-      }
+        // 查看答案
+        if (curState.value === 'answer') {
+          if (props.question.answerType === 'text') {
+            displayText(props.question.answer)
+          } else if (
+            props.question.answerType === 'audio' ||
+            props.question.answerType === 'phototalk'
+          ) {
+            displayAudio(props.question.answer)
+          }
+        }
 
-      answerVisible.value = true
+        isSubmitting.value = false // 确保在其他情况下也将提交状态设置为 false
+      }
     }
 
     const handleAskButtonClick = () => {
@@ -407,32 +483,162 @@ export default {
       emit('update:dialogVisible', val)
     }
 
+    const displayText = async (text) => {
+      displayedText.value = ''
+      interruptFlag.value = false
+
+      if (!text) return
+
+      for (let i = 0; text && i < text.length; i++) {
+        if (interruptFlag.value) break
+        await new Promise((resolve) => setTimeout(resolve, 50))
+        displayedText.value += text[i]
+      }
+    }
+
+    const interactionDisplayState = (curState) => {
+      const nextIndex = stateOrder.indexOf(curState.value) + 1
+      curState.value = stateOrder[nextIndex % stateOrder.length]
+
+      if (curState.value === 'answer' && props.question.answerType === 'phototalk') {
+        startBackgroundAudio()
+      }
+    }
+
+    const startRecording = () => {
+      // 清空 finalTranscript
+      finalTranscript.value = ''
+
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        navigator.mediaDevices
+          .getUserMedia({ audio: true })
+          .then((stream) => {
+            mediaRecorder.value = new MediaRecorder(stream)
+            mediaRecorder.value.start()
+            isRecording.value = true
+            const audioChunks = []
+            mediaRecorder.value.ondataavailable = (event) => {
+              audioChunks.push(event.data)
+            }
+            mediaRecorder.value.onstop = () => {
+              audioBlob.value = new Blob(audioChunks, { type: 'audio/wav' })
+              questionAudioUrl.value = URL.createObjectURL(audioBlob.value)
+              isRecording.value = false
+              // 将录音发送到服务器或按需处理
+              recognition.value.stop()
+            }
+            recognition.value.start()
+          })
+          .catch((error) => {
+            console.error('Error accessing media devices.', error)
+          })
+      } else {
+        console.error('Media devices are not supported.')
+      }
+    }
+
+    const stopRecording = () => {
+      if (mediaRecorder.value) {
+        mediaRecorder.value.stop()
+      }
+    }
+
+    const playAudio = () => {
+      const audio = audioPlayer.value
+      if (audio) {
+        stopBackgroundAudio()
+        if (audio.paused) {
+          audio.play()
+        } else {
+          audio.pause()
+        }
+      }
+    }
+
+    const toggleAudio = () => {
+      const audio = audioPlayer.value
+      if (audio) {
+        if (audio.paused) {
+          audio.play()
+        } else {
+          audio.pause()
+        }
+      }
+    }
+
+    const onAudioLoaded = () => {
+      isAnswerUrlLoaded.value = true
+      stopBackgroundAudio()
+      playAudio()
+    }
+
+    if ('webkitSpeechRecognition' in window) {
+      recognition.value = new webkitSpeechRecognition()
+      recognition.value.continuous = true
+      recognition.value.interimResults = true
+      recognition.value.lang = 'zh-CN'
+
+      recognition.value.onresult = (event) => {
+        let interim = ''
+        let final = ''
+        for (let i = 0; i < event.results.length; i++) {
+          if (event.results[i].isFinal) {
+            final += event.results[i][0].transcript
+          } else {
+            interim += event.results[i][0].transcript
+          }
+        }
+        interimTranscript.value = interim
+        finalTranscript.value += final
+        userAnswer.value = finalTranscript.value
+      }
+    } else {
+      console.error('Web Speech API is not supported in this browser.')
+      ElMessage({
+        message: 'Web Speech API is not supported in this browser.',
+        type: 'error'
+      })
+    }
+
     return {
       userAnswer,
       displayedText,
+      interimTranscript,
+      finalTranscript,
       isRecording,
-      answerUrl,
-      startRecording,
-      stopRecording,
+      questionAudioUrl,
+      answerAudioUrl,
+      curState,
+      dialogVisibleLocal,
+      closeDialog,
+      handleSubmit,
+      handleSubmitAnswer,
+      updateUserAnswer,
       handleAudioPartReady,
       handleAudioComplete,
       wsComponent,
+      closeConversation,
+      interactionDisplayState,
+      handleAskButtonClick,
+      startRecording,
+      stopRecording,
+      playAudio,
+      toggleAudio,
       audioPlayer,
+      backgroundAudio,
       mediaSource,
       sourceBuffer,
       answerVisible,
-      closeConversation,
-      handleSubmitAnswer,
       askButtonMode,
-      handleAskButtonClick,
       resetState,
-      closeDialog,
       updateDialogVisible,
-      dialogVisibleLocal,
       isSubmitAnswer,
       scoreVisible,
-      curState,
-      handleSubmit
+      onAudioLoaded,
+      isAnswerUrlLoaded,
+      evaluation,
+      answerScore,
+      isSubmitting
     }
   }
 }
@@ -470,10 +676,6 @@ export default {
   margin: 10px 0;
 }
 
-.ask-button {
-  margin-bottom: 20px;
-}
-
 .phototalk-wrapper {
   width: 200px;
   height: 200px;
@@ -482,5 +684,44 @@ export default {
     width: 100%;
     height: 100%;
   }
+}
+
+.audio-icon {
+  cursor: pointer;
+  font-size: 24px;
+  color: black;
+  &.loading {
+    animation: jump 1s linear infinite;
+  }
+}
+
+.audio-icon-active {
+  color: #409eff;
+}
+
+@keyframes jump {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.record-button {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background-color: #222;
+  border: none;
+  cursor: pointer;
+}
+
+.transcript {
+  margin-top: 10px;
+  padding: 10px;
+  background-color: #f9f9f9;
+  border-radius: 5px;
 }
 </style>

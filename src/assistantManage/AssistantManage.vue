@@ -18,9 +18,9 @@
                 <el-button @click="handleEdit(scope.row)" type="primary" size="small"
                   >编辑</el-button
                 >
-                <el-button @click="removeAssistant(scope.row.id)" type="danger" size="small"
+                <!-- <el-button @click="removeAssistant(scope.row.id)" type="danger" size="small"
                   >删除</el-button
-                >
+                > -->
               </template>
             </el-table-column>
           </el-table>
