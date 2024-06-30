@@ -18,6 +18,14 @@
           <el-form-item label="备注" prop="remark">
             <el-input type="textarea" v-model="form.remark"></el-input>
           </el-form-item>
+          <!-- 交互区 -->
+          <el-form-item label="交互区">
+            <el-radio-group v-model="interactionPosition">
+              <el-radio :value="'overflow'">弹窗</el-radio>
+              <el-radio :value="'right'">右侧</el-radio>
+            </el-radio-group>
+          </el-form-item>
+
           <el-form-item>
             <el-button type="primary" @click="handleSubmit">提交</el-button>
             <el-button @click="handleReset">重置</el-button>
@@ -46,6 +54,7 @@ export default {
       name: '',
       remark: ''
     })
+    const interactionPosition = ref('')
 
     const handleSubmit = () => {
       formRef.value.validate((valid) => {
@@ -84,7 +93,8 @@ export default {
             confirmButtonText: '确定',
             type: 'success'
           }).then(() => {
-            router.push('/assistant/' + response.data.id)
+            const { id, assistant_id, store_id } = response.data
+            router.push(`/assistant/${id}?assistant_id=${assistant_id}&store_id=${store_id}`)
           })
         } else {
           console.error('创建助手失败', response.message)
@@ -98,7 +108,8 @@ export default {
       form,
       formRef,
       handleSubmit,
-      handleReset
+      handleReset,
+      interactionPosition
     }
   },
   onMounted() {}

@@ -32,14 +32,14 @@
 <script lang="ts" setup>
 import { ref, reactive } from 'vue'
 import { ElMessage } from 'element-plus'
-import { request, saveTokenInCookie } from '@/request'
+import { request, saveTokenInCookie, saveUserInfo } from '@/request'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
 
 const form = reactive({
   phone: '18511759286',
-  verification: '188796'
+  verification: '520476'
 })
 
 const rules = {
@@ -102,6 +102,9 @@ const submitForm = async () => {
           //save token
           const { token } = response.data
           saveTokenInCookie(token)
+
+          //save user data
+          saveUserInfo(response.data)
 
           setTimeout(() => {
             router.push('/dashboard')

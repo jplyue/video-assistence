@@ -24,13 +24,14 @@
 </template>
 
 <script>
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { request } from '@/request'
 
 export default {
   setup() {
     const router = useRouter()
+    const route = useRoute()
     const activeIndex = ref('1')
     const assistants = ref([])
 
@@ -49,6 +50,7 @@ export default {
         )
         if (response.code === 200) {
           assistants.value = response.data.list
+          setActiveIndex()
         } else {
           console.error('获取助手列表失败', response.message)
         }
@@ -60,6 +62,23 @@ export default {
     const navigateTo = (path, assistantId, storeId) => {
       router.push({ path, query: { assistant_id: assistantId, store_id: storeId } })
     }
+
+    const setActiveIndex = () => {
+      const assistantId = route.params.id
+      const assistant = assistants.value.find((item) => item.id === parseInt(assistantId))
+      if (assistant) {
+        activeIndex.value = `assistant-${assistant.id}`
+      } else {
+        activeIndex.value = '1'
+      }
+    }
+
+    watch(
+      () => route.params.id,
+      () => {
+        setActiveIndex()
+      }
+    )
 
     onMounted(() => {
       fetchAssistants()

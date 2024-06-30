@@ -71,3 +71,12 @@ export const request = (options: AxiosRequestConfig, addToken: boolean = false) 
 
   return instance(options)
 }
+
+export const saveUserInfo = (data: Object) => {
+  localStorage.setItem('user', JSON.stringify(data))
+}
+
+export const getUserInfo = () => {
+  const userData = localStorage.getItem('user')
+  return userData ? JSON.parse(userData) : null
+}
