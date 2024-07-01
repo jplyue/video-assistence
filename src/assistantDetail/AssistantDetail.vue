@@ -19,6 +19,9 @@
               <el-form-item label="描述">
                 <el-input v-model="videoForm.desc" style="width: 50%"></el-input>
               </el-form-item>
+              <el-form-item label="显示提问按钮">
+                <el-switch v-model="videoForm.showQuestionButton"></el-switch>
+              </el-form-item>
               <el-form-item label="上传视频">
                 <el-upload
                   ref="videoUpload"
@@ -140,7 +143,8 @@ const route = useRoute()
 
 const videoForm = ref({
   title: '',
-  desc: ''
+  desc: '',
+  showQuestionButton: ''
 })
 
 const knowledgeForm = ref({
@@ -272,6 +276,7 @@ const beforeUploadVideo = async (file) => {
   formData.append('file', file)
   formData.append('title', videoForm.value.title)
   formData.append('desc', videoForm.value.desc)
+  formData.append('button_show', videoForm.value.showQuestionButton === true ? '1' : '2')
   formData.append('assistant_id', route.query.assistant_id)
   formData.append('store_id', route.query.store_id)
   formData.append('assistant_show', 1)

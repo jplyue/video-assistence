@@ -153,7 +153,6 @@ export default {
     }
 
     const handleBeforeUnload = (event) => {
-      reportPlayOver()
       event.preventDefault()
       event.returnValue = ''
     }
@@ -220,6 +219,10 @@ export default {
             checkTime()
           })
 
+          player.value.on('ended', () => {
+            reportPlayOver()
+          })
+
           const threadResponse = await request(
             {
               url: '/video/thread',
@@ -249,7 +252,6 @@ export default {
 
     onBeforeUnmount(() => {
       window.removeEventListener('beforeunload', handleBeforeUnload)
-      reportPlayOver()
     })
 
     return {

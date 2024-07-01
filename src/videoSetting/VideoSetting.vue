@@ -178,22 +178,27 @@ export default {
 
         if (videoDetailResponse.code === 200) {
           const videoData = videoDetailResponse.data
-          questions.value = videoData.questions.map((question, index) => ({
-            index: index + 1,
-            question: question.question,
-            questionType: question.question_type.includes(1) ? 'audio' : 'text',
-            answer: question.answer,
-            answerTypes: question.answer_type
-              .map((type) => {
-                for (const [key, value] of Object.entries(answerTypeMapping)) {
-                  if (value === type) return key
-                }
-                return null
-              })
-              .filter(Boolean),
-            time: question.time,
-            action: 'pause'
-          }))
+          if (Array.isArray(videoData.questions)) {
+            questions.value = videoData.questions.map((question, index) => ({
+              index: index + 1,
+              question: question.question,
+              questionType: question.question_type.includes(1) ? 'audio' : 'text',
+              answer: question.answer,
+              answerTypes: question.answer_type
+                .map((type) => {
+                  for (const [key, value] of Object.entries(answerTypeMapping)) {
+                    if (value === type) return key
+                  }
+                  return null
+                })
+                .filter(Boolean),
+              time: question.time,
+              action: 'pause'
+            }))
+          } else {
+            questions.value = []
+          }
+
           shareSetting.value = videoData.share_login === 1
           loginRequired.value = videoData.assistant_show === 1
           showAskButton.value = videoData.answer_choose === 1
