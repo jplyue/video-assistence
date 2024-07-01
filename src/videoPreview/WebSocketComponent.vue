@@ -6,6 +6,7 @@
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import pako from 'pako'
 import { v4 as uuidv4 } from 'uuid'
+import { HUO_SHAN_URL } from '@/api'
 
 export default {
   name: 'WebSocketComponent',
@@ -23,11 +24,11 @@ export default {
         ws.value.close()
       }
 
-      ws.value = new WebSocket('ws://localhost:8080/ws')
+      ws.value = new WebSocket(`ws://${HUO_SHAN_URL}/ws`)
       ws.value.binaryType = 'arraybuffer'
 
       ws.value.onopen = () => {
-        console.log('WebSocket is open now.')
+        console.log('WebSocket is open now.', `ws://${HUO_SHAN_URL}/ws`)
         connected.value = true
         if (props.text) {
           sendMessages(props.text)

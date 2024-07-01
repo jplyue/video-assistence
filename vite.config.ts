@@ -8,6 +8,8 @@ import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 
+import { API_BASE_URL } from '@/api'
+
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
@@ -27,7 +29,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://43.135.162.53:9991',
+        target: API_BASE_URL,
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, '')
       }

@@ -1,37 +1,59 @@
 <template>
   <el-container class="dashboard">
     <!-- 左侧菜单栏 -->
-    <Sidebar />
+    <Sidebar :drawerVisible="drawerVisible" @toggleMenu="toggleMenu" />
 
     <!-- 右侧内容区域 -->
     <el-container>
       <el-header class="header">
-        <h2 class="title">Dashboard</h2>
-        <div class="header-buttons">
-          <el-button type="primary" @click="navigateToAssistantManagement">管理助手</el-button>
-          <el-button type="danger" @click="logout">登出</el-button>
+        <div v-if="isMobile" class="mobile-header">
+          <div>
+            <el-button class="menu-button" @click="toggleMenu">
+              <el-icon><Menu /></el-icon>
+            </el-button>
+          </div>
+        </div>
+        <div v-else class="desktop-header">
+          <h2 class="title">Dashboard</h2>
+          <div class="header-buttons">
+            <el-button type="primary" @click="navigateToAssistantManagement">管理助手</el-button>
+            <el-button type="danger" @click="logout">登出</el-button>
+          </div>
         </div>
       </el-header>
       <el-main class="main">
+        <el-row v-if="isMobile">
+          <div class="page-header">
+            <div><h2 class="title">Dashboard</h2></div>
+            <div>
+              <el-button type="primary" @click="navigateToAssistantManagement">
+                <el-icon><Setting /></el-icon>
+              </el-button>
+              <el-button type="danger" @click="logout">
+                <el-icon><SwitchButton /></el-icon>
+              </el-button>
+            </div>
+          </div>
+        </el-row>
         <el-row :gutter="20">
-          <el-col :span="12">
+          <el-col :span="12" :xs="{ span: 24 }">
             <div class="chart-container">
               <canvas id="chart1"></canvas>
             </div>
           </el-col>
-          <el-col :span="12">
+          <el-col :span="12" :xs="{ span: 24 }">
             <div class="chart-container">
               <canvas id="chart2"></canvas>
             </div>
           </el-col>
         </el-row>
         <el-row :gutter="20" style="margin-top: 20px">
-          <el-col :span="12">
+          <el-col :span="12" :xs="{ span: 24 }">
             <div class="chart-container">
               <canvas id="chart3"></canvas>
             </div>
           </el-col>
-          <el-col :span="12">
+          <el-col :span="12" :xs="{ span: 24 }">
             <div class="chart-container">
               <canvas id="chart4"></canvas>
             </div>
@@ -43,10 +65,11 @@
 </template>
 
 <script>
-import { defineComponent, onMounted } from 'vue'
+import { defineComponent, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElContainer, ElHeader, ElMain, ElRow, ElCol, ElButton } from 'element-plus'
+import { ElContainer, ElHeader, ElMain, ElRow, ElCol, ElButton, ElIcon } from 'element-plus'
 import Sidebar from '@/components/Sidebar.vue'
+import { Menu, Setting, SwitchButton } from '@element-plus/icons-vue'
 import Chart from 'chart.js/auto'
 import { getTokenFromCookie, removeTokenFromCookie } from '@/request'
 
@@ -59,10 +82,16 @@ export default defineComponent({
     ElMain,
     ElRow,
     ElCol,
-    ElButton
+    ElButton,
+    ElIcon,
+    Menu,
+    Setting,
+    SwitchButton
   },
   setup() {
     const router = useRouter()
+    const isMobile = ref(window.innerWidth <= 768)
+    const drawerVisible = ref(false)
 
     const checkToken = () => {
       const token = getTokenFromCookie()
@@ -80,8 +109,17 @@ export default defineComponent({
       router.push('/manage')
     }
 
+    const handleResize = () => {
+      isMobile.value = window.innerWidth <= 768
+    }
+
+    const toggleMenu = () => {
+      drawerVisible.value = !drawerVisible.value
+    }
+
     onMounted(() => {
       checkToken()
+      window.addEventListener('resize', handleResize)
 
       const createChart = (id, type, data, options) => {
         const ctx = document.getElementById(id).getContext('2d')
@@ -125,13 +163,16 @@ export default defineComponent({
 
     return {
       navigateToAssistantManagement,
-      logout
+      logout,
+      isMobile,
+      drawerVisible,
+      toggleMenu
     }
   }
 })
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
 .dashboard {
   display: flex;
   height: 100vh;
@@ -143,6 +184,31 @@ export default defineComponent({
   background-color: #fff;
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
   z-index: 100;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+
+  .title {
+    line-height: 2;
+  }
+}
+
+.header-top {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-buttons-mobile {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.desktop-header {
+  width: 100%;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -165,5 +231,30 @@ export default defineComponent({
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   height: 300px;
+}
+
+.menu-button {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 2000;
+}
+
+.page-header {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+/* Media query for mobile devices */
+@media (max-width: 768px) {
+  .el-col {
+    width: 100% !important;
+  }
+
+  .chart-container {
+    margin-bottom: 20px;
+  }
 }
 </style>
